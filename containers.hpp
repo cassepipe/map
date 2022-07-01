@@ -280,6 +280,7 @@ template <typename T> class vector_iterator
 		return (current_ >= rhs.current_);
 	}
 };
+} //namespace ft
 
 // VECTOR_CONST_ITERATOR
 namespace ft
