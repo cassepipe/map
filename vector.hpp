@@ -1,4 +1,24 @@
-/* ################################# VECTOR ################################# */
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   vector.hpp                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: cassepipe <norminet@42.fr>                 +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2022/07/07 15:39:18 by cassepipe         #+#    #+#             */
+/*   Updated: 2022/07/07 15:39:18 by cassepipe        ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#ifndef VECTOR_HPP
+#define VECTOR_HPP
+
+#include <memory>
+#include <sstream>
+#include <algorithm>
+#include <tuple>
+#include "vector_iterator.hpp"
+#include "reverse_iterator.hpp"
 
 namespace ft
 {
@@ -6,34 +26,41 @@ template < typename T, typename Alloc = std::allocator<T> > // Space is actually
 class vector
 {
   public:
-	// types
-	typedef T											value_type;
-	typedef Alloc										allocator_type;
-	typedef typename allocator_type::reference			reference;
-	typedef typename allocator_type::const_reference	const_reference;
-	typedef typename allocator_type::pointer			pointer;
-	typedef typename allocator_type::const_pointer		const_pointer;
+	/// EXPOSED TYPES
+	typedef T                                                        value_type;
+	typedef Alloc									             allocator_type;
+	typedef typename allocator_type::reference                        reference;
+	typedef typename allocator_type::const_reference            const_reference;
+	typedef typename allocator_type::pointer                            pointer;
+	typedef typename allocator_type::const_pointer                const_pointer;
 
+	// What if value_type is already const ? Well the compiler is smart enough 
+	// to remove the extra const. Note that vector<const T> still won't compile
+	// because of that leads std::allocator to having two functions with the 
+	// same type signature. Writing our own const-friendly allocator would work
 	typedef vector_iterator<value_type>                                iterator;
-	// What if value_type is already const ? Well the compiler is smart enough to remove the extra const
-	// Note that vector<const T> still won't compile because of that leads std::allocator to having
-	// two functions with the same type signature, unless we write our own const-friendly allocator  
 	typedef vector_iterator<const value_type>                    const_iterator;
-	typedef vector_reverse_iterator<value_type>                reverse_iterator;
-	typedef vector_reverse_iterator<const value_type>    const_reverse_iterator; //Why do I need ft:: ?
+	typedef	reverse_iterator<iterator>                         reverse_iterator;
+	typedef ft::reverse_iterator<const_iterator>       const_reverse_iterator; //Why do I need ft:: ?
 
-	typedef std::ptrdiff_t difference_type;
-	typedef std::size_t size_type;
+	// Why ptrdiff_t ? Because it is the signed equivalent of size_t.
+	// Good for pointer arithmetics
+	typedef std::ptrdiff_t                                      difference_type;
+	typedef std::size_t                                               size_type;
 
   protected:
 
 	/** DATA **/
-	// We need to store an allocator inside our instance in order to call its methods
+	// We need to store an allocator inside our instance in order to call its 
+	// methods to, you know, allocate.
 	allocator_type allocator_;
+
 	// The underlying data we are operating on
 	pointer data_;
+
 	// The number of stored elements
 	size_type size_;
+
 	// Remaining allocated memory
 	size_type capacity_;
 
@@ -59,14 +86,14 @@ class vector
   public:
 	/** INTERFACE **/
 
-	// Default constructor. Why is explicit needed ? (Prototype comes for cplusplus.com
+	// Default constructor. 
+	// It is explicit because we won't allow anything to be converted implicity
+	// to an allocator.
 	explicit vector(const allocator_type& alloc = allocator_type()); // Calls Alloc<T> default ctor by default
 
 	// Fill constructor
-	explicit vector(size_type n,
-	                const value_type& val =
-	                    value_type(), // Call be like "vector<Obj>(5));" and passes rvalue of T() ctor by default
-	                const allocator_type& alloc = allocator_type());
+	// If a call is like "vector<Obj>(5));" and passes then the value of Obj() is passed by default
+	explicit vector(size_type n, const value_type& val = value_type(), const allocator_type& alloc = allocator_type());
 
 	// Range constructor
 	template <class InputIterator>
@@ -77,21 +104,23 @@ class vector
 	// Copy constructor. Shall perform deep copy using operator=
 	vector(const vector& other)
 	{
-		operator=(other);
+		this->operator=(other);
 	}
 
 	// Destructor. Calls allocator's destroy() and deallocate() methods to release heap memory
 	~vector()
 	{
-		clear();
+		this->clear();
 		allocator_.deallocate(data_, capacity_);
 	}
+
+	/* CONVERSION OPERATOR */
 
 	vector& operator=(const vector& rhs) // Performs deep copy
 	{
 		if (this != &rhs)
 		{
-			clear(); //Does not change capacity. Call destructors for every object in the vector
+			this->clear(); //Does not change capacity. Call destructors for every object in the vector
 
 			if (rhs.size_ > capacity_) // If we don't have enough room, let's make some
 			{
@@ -128,27 +157,27 @@ class vector
 
 	const_iterator end() const
 	{
-		return const_iterator(data_ + size_); //Points to one past our storage
+		return const_iterator(data_ + size_); 
 	}
 
 	reverse_iterator rbegin()
 	{
-		return reverse_iterator(data_); //Calls our iterator's constructor !
+		return reverse_iterator(data_);
 	}
 
 	const_reverse_iterator rbegin() const
 	{
-		return const_reverse_iterator(data_); //Calls our iterator's constructor !
+		return const_reverse_iterator(data_); 
 	}
 
 	reverse_iterator rend()
 	{
-		return reverse_iterator(data_ + size_); //Calls our iterator's constructor !
+		return reverse_iterator(data_ + size_); 
 	}
 
 	const_reverse_iterator rend() const
 	{
-		return const_reverse_iterator(data_ + size_); //Calls our iterator's constructor !
+		return const_reverse_iterator(data_ + size_); 
 	}
 
 	/* Capacity */
@@ -224,10 +253,10 @@ class vector
 	/* Element access */
 
 	// The reason we need const_reference versions is to be able to access 
-	// elements in case the object is declared as const.
+	// elements in case the vector itself is declared as const.
 	// Reminder : In the case where an instance is declared const, having a func
 	// that returns a simple reference version is not an issue as long we are not
-	// using that function.
+	// using that function which polypmorphism prevents here.
 	reference operator[](size_type n)
 	{
 		return data_[n];
@@ -293,11 +322,43 @@ class vector
 	void insert(iterator position, size_type n, const value_type& val);
 
 	template <class InputIterator> void insert(iterator position, InputIterator first, InputIterator last);
-	iterator erase(iterator position);
 
-	iterator erase(iterator first, iterator last);
+	iterator erase(iterator position)
+	{
+		return erase(position, position + 1);
+	}
 
-	void swap(vector& x);
+	// No need for reallocation
+	// The behaviour for last < first is not specified, making my own
+	iterator erase(iterator first, iterator last)
+	{
+		iterator end = this->end();
+		if (first > last)
+			std::swap(first, last);
+		if (first >= end)
+			return end;
+		if (first == last)
+			return last;
+		size_type distance = last - first;
+		size_ -= distance;
+		for (; last < end ; --distance, ++first, ++last)
+		{
+			allocator_.destroy(&(*first)); 
+			allocator_.construct(&(*first), *last);
+		}
+		for (; distance > 0 ; --distance, ++first)
+		{
+			allocator_.destroy(&(*first)); 
+		}
+		return (++first);
+	}
+
+	void swap(vector& x)
+	{
+		vector<T> tmp = *this;
+		*this = x;
+		x = tmp;
+	}
 
 	void clear()
 	{
@@ -310,11 +371,30 @@ class vector
 };
 
 template <class T, class Alloc>
-  bool operator== (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs);
+  bool operator== (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+{
+	if (lhs.size() != rhs.size())
+		return false;
+	typename vector<T, Alloc>::iterator lit = lhs.begin();
+	typename vector<T, Alloc>::iterator lend = lhs.end();
+	typename vector<T, Alloc>::iterator rit = rhs.begin();
+	typename vector<T, Alloc>::iterator rend = rhs.end();
+	while (lit != lend)
+	{
+		if (*lit != *rit)
+			return false;
+		++rit;
+		++lit;
+	}
+	return true;
+}
 
 
 template <class T, class Alloc>
-  bool operator!= (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs);
+  bool operator!= (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+{
+	return !(lhs == rhs);
+}
 
 
 template <class T, class Alloc>
@@ -333,3 +413,5 @@ template <class T, class Alloc>
   bool operator>= (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs);
 
 } // namespace ft
+
+#endif /* VECTOR_HPP */
