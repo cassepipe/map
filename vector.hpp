@@ -17,8 +17,10 @@
 #include <sstream>
 #include <algorithm>
 #include <tuple>
+#include <type_traits>
 #include "vector_iterator.hpp"
 #include "reverse_iterator.hpp"
+#include <assert.h>
 
 namespace ft
 {
@@ -61,7 +63,7 @@ class vector
 	// The number of stored elements
 	size_type size_;
 
-	// Remaining allocated memory
+	// Allocated memory
 	size_type capacity_;
 
 	/** HELPER FUNCTIONS **/
@@ -83,23 +85,72 @@ class vector
 		return n;
 	}
 
+	void destroy_data_()
+	{
+		for (size_type i = 0; i < size_; ++i)
+			allocator_.destroy(&data_[i]);
+	}
+
+	void deallocate_data_()
+	{
+		allocator_.deallocate(data_, capacity_);
+	}
+
+
+	template <class InputIterator>
+	void assign_(InputIterator first, InputIterator last, allocator_type alloc)
+	{
+		// Clear, deallocate, allocate, copy data
+		destroy_data_();
+		deallocate_data_();
+		size_ = std::distance(first, last);
+		data_ = allocator_.allocate(size_);
+		capacity_ = size_;
+		for (size_type i = 0; i < size_; ++i)
+			allocator_.construct(&data_[i], first[i]);
+	}
+
+
+	void assign_(size_type n, const value_type& val, allocator_type alloc)
+	{
+		// Clear, deallocate, allocate, copy data
+		destroy_data_();
+		deallocate_data_();
+		size_ = n;
+		data_ = allocator_.allocate(size_);
+		capacity_ = size_;;
+		for (size_type i = 0; i < size_; ++i)
+			allocator_.construct(&data_[i], val);
+	}
+
   public:
 	/** INTERFACE **/
 
 	// Default constructor. 
-	// It is explicit because we won't allow anything to be converted implicity
+	// It is explicit because we won't allow anything to be converted implicity to an allocator
 	// to an allocator.
-	explicit vector(const allocator_type& alloc = allocator_type()); // Calls Alloc<T> default ctor by default
+	explicit vector(const allocator_type& alloc = allocator_type()) // Calls Alloc<T> default ctor
+	{
+		assign_(0, value_type(), alloc);
+	}
 
 	// Fill constructor
 	// If a call is like "vector<Obj>(5));" and passes then the value of Obj() is passed by default
-	explicit vector(size_type n, const value_type& val = value_type(), const allocator_type& alloc = allocator_type());
+	explicit vector(size_type n, const value_type& val = value_type(), const allocator_type& alloc = allocator_type())
+	{
+		assign_(n, val, alloc);
+	}
 
 	// Range constructor
+	// Do some enable_if<> = 0 wizardry to ensure InputIterator is not anything
 	template <class InputIterator>
-	vector(InputIterator first, InputIterator last,
-	       const allocator_type& alloc =
-	           allocator_type()); // Do some enable_if<> = 0 wizardry to ensure InputIterator is not anything
+	vector(InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type(),
+			typename enable_if<
+									std::is_integral< InputIterator l>
+								>::type = nullptr)
+	{
+		assign_(first, last, alloc);
+	}
 
 	// Copy constructor. Shall perform deep copy using operator=
 	vector(const vector& other)
@@ -107,11 +158,11 @@ class vector
 		this->operator=(other);
 	}
 
-	// Destructor. Calls allocator's destroy() and deallocate() methods to release heap memory
+	// Destructor. 
 	~vector()
 	{
-		this->clear();
-		allocator_.deallocate(data_, capacity_);
+		destroy_data_();
+		deallocate_data_();
 	}
 
 	/* CONVERSION OPERATOR */
@@ -120,13 +171,13 @@ class vector
 	{
 		if (this != &rhs)
 		{
-			this->clear(); //Does not change capacity. Call destructors for every object in the vector
+			destroy_data_();
 
 			if (rhs.size_ > capacity_) // If we don't have enough room, let's make some
 			{
-				allocator_.deallocate(data_, capacity_);
+				deallocate_data_();
+				data_ = allocator_.allocate(rhs.size_);
 				capacity_ = rhs.size_;
-				data_ = allocator_.allocate(capacity_);
 			}
 			size_ = rhs.size_;
 			for (size_type i = 0; i < size_; ++i)
@@ -139,7 +190,7 @@ class vector
 
 	/* Iterators */
 
-	//The reason why we have const versions is because we can't return a iterator from a const vector !
+	//The reason why we have const versions is because we can't return a plain iterator from a const vector !
 	iterator begin() 
 	{
 		return iterator(data_); //Calls our iterator's constructor !
@@ -192,30 +243,33 @@ class vector
 		return allocator_.max_size();
 	}
 
+	// Resize to a specific size
 	void resize(size_type n, value_type val = value_type()) // No deallocation here. This is not shrink_to_fit()
 	{
-		if (capacity_ < n)
+		if (n > size_)
 		{
-			pointer tmp = allocator_.allocate(n);
-			for (size_type i = 0; i < size_ ; ++i)
+			if (n > capacity_)
 			{
-				allocator_.construct(&tmp[i], data_[i]);
-				allocator_.destroy(&data_[i]); //Is this faster than calling destroy in another loop ? I guess so
+				// Then put data in bigger container
+				pointer tmp = allocator_.allocate(n);
+				for (size_type i = 0; i < size_ ; ++i)
+				{
+					allocator_.construct(&tmp[i], data_[i]);
+					allocator_.destroy(&data_[i]); 
+				}
+				deallocate_data_();
+				data_ = tmp;
 			}
-			allocator_.deallocate(data_);
-			data_ = tmp;
-			capacity_ = n;
-		}
-		if (n < size_)
-		{
-			for (--size_ ; size_ >= n ; --size_)
-				allocator_.destroy(&data_[size_]);
-			++size_;
+			for (--size_; size_ < n ; ++size_)
+				allocator_.construct(&data_[size_], value_type()); //Yes you can pass a constructor as a const ref to a value
+			capacity_ = size_;
 		}
 		else
 		{
-			for (; size_ <= n ; ++size_)
-				allocator_.construct(&data_[size_], value_type()); //Yes you can pass a constructor as a const ref to a value
+			for (--size_; size_ >= n ; --size_)
+				allocator_.destroy(&data_[size_]);
+			++size_;
+			capacity_ = size_;
 		}
 	}
 
@@ -244,7 +298,7 @@ class vector
 				allocator_.construct(&tmp[i], data_[i]);
 				allocator_.destroy(&data_[i]);
 			}
-			allocator_.deallocate(data_);
+			deallocate_data_();
 			data_ = tmp;
 			capacity_ = n;
 		}
@@ -305,11 +359,23 @@ class vector
 	/* Modifiers */
 
 	template <class InputIterator>
-		void assign(InputIterator first, InputIterator last);
+	void assign(InputIterator first, InputIterator last)
+	{
+		assign_(first, last, allocator_);
+	}
 
-	void assign(size_type n, const value_type& val);
+	void assign(size_type n, const value_type& val)
+	{
+		assign_(n, allocator_);
+	}
 
-	void push_back(const value_type& val);
+	void push_back(const value_type& val)
+	{
+		if (capacity_ == size_)
+			resize(size_ * 2);
+		allocator_.construct(&data_[size_], val);
+		++size_;
+	}
 
 	void pop_back()
 	{
@@ -329,17 +395,15 @@ class vector
 	}
 
 	// No need for reallocation
-	// The behaviour for last < first is not specified, making my own
+	// The behaviour for last < first is not specified 
 	iterator erase(iterator first, iterator last)
 	{
 		iterator end = this->end();
-		if (first > last)
-			std::swap(first, last);
 		if (first >= end)
 			return end;
 		if (first == last)
 			return last;
-		size_type distance = last - first;
+		size_type distance = std::distance(first, last);
 		size_ -= distance;
 		for (; last < end ; --distance, ++first, ++last)
 		{
@@ -367,6 +431,7 @@ class vector
 			allocator_.destroy(&data_[size_]);
 		}
 		++size_;
+		capacity_ = 0;
 	}
 };
 
@@ -398,19 +463,48 @@ template <class T, class Alloc>
 
 
 template <class T, class Alloc>
-  bool operator<  (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs);
+  bool operator<  (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+{
+	typedef typename vector<T,Alloc>::iterator	iterator;
 
+	iterator lit = lhs.begin();
+	iterator llast = --(lhs.end());
+	iterator rit = rhs.begin();
+	iterator rlast = --(rhs.end());
+
+	// This loop stops on the first diff or once vector end is reach
+	while (lit != llast && rit != rlast && *lit == *rit)
+	{
+		++rit;
+		++lit;
+	}
+	// Special case where one is the subset of another 
+	if (*lit == *rit) // Means the loop stopped because one end was reached
+	{
+		// One is strictly a subset of the other
+		return (lit == llast and rit != rlast);
+	}
+	return (*lit < *rit);
+}
 
 template <class T, class Alloc>
-  bool operator<= (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs);
-
-
-template <class T, class Alloc>
-  bool operator>  (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs);
-
+  bool operator>= (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+{
+	return !(lhs < rhs);
+}
 
 template <class T, class Alloc>
-  bool operator>= (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs);
+  bool operator>  (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+{
+	// We just swap the order of ther args to use operator<
+	return rhs < lhs;
+}
+
+template <class T, class Alloc>
+  bool operator<= (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+{
+	return !(lhs > rhs);
+}
 
 } // namespace ft
 
