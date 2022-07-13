@@ -25,11 +25,12 @@ template <typename T> class vector_iterator
 
   public:
 	/// EXPOSED TYPES
+	// It is expected that iterators expose some traits for the purpose of using
+	// alogrithms that operates on them  They are pointers with metadata in a sort
 	
-	// It is expected that iterators expose some traits for the purpose of using alogrithms that operates on them
-	// They are pointers with metadata in a sort
+	// Why ptrdiff_t ? Because it is the signed equivalent of size_t.
+	// No, ssize_t is not.
 	typedef ft::random_access_iterator_tag                    iterator_category;
-	//Why ptrdiff_t ? Because it is the signed equivalent of size_t. No, ssize_t is not.
 	typedef std::ptrdiff_t                                      difference_type;
 	typedef T                                                        value_type;
 	typedef T*                                                          pointer;

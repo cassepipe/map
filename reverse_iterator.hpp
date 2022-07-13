@@ -16,7 +16,6 @@
 #include <cstddef>
 #include <memory>
 
-
 #include "iterator_traits.hpp"
 
 namespace ft
