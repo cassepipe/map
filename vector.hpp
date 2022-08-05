@@ -13,47 +13,49 @@
 #ifndef VECTOR_HPP
 #define VECTOR_HPP
 
+#include "enable_if.hpp"
+#include "is_integral.hpp"
+#include "reverse_iterator.hpp"
+#include "vector_iterator.hpp"
+#include <algorithm>
+#include <assert.h>
+#include <cstddef>
 #include <memory>
 #include <sstream>
-#include <algorithm>
 #include <tuple>
 #include <type_traits>
-#include "vector_iterator.hpp"
-#include "reverse_iterator.hpp"
-#include <assert.h>
 
 namespace ft
 {
-template < typename T, typename Alloc = std::allocator<T> > // Space is actually required I think
+template <typename T, typename Alloc = std::allocator<T>> // Space is actually required I think
 class vector
 {
   public:
 	/// EXPOSED TYPES
-	typedef T                                                        value_type;
-	typedef Alloc									             allocator_type;
-	typedef typename allocator_type::reference                        reference;
-	typedef typename allocator_type::const_reference            const_reference;
-	typedef typename allocator_type::pointer                            pointer;
-	typedef typename allocator_type::const_pointer                const_pointer;
+	typedef T                                        value_type;
+	typedef Alloc                                    allocator_type;
+	typedef typename allocator_type::reference       reference;
+	typedef typename allocator_type::const_reference const_reference;
+	typedef typename allocator_type::pointer         pointer;
+	typedef typename allocator_type::const_pointer   const_pointer;
 
-	// What if value_type is already const ? Well the compiler is smart enough 
+	// What if value_type is already const ? Well the compiler is smart enough
 	// to remove the extra const. Note that vector<const T> still won't compile
-	// because of that leads std::allocator to having two functions with the 
+	// because of that leads std::allocator to having two functions with the
 	// same type signature. Writing our own const-friendly allocator would work
-	typedef vector_iterator<value_type>                                iterator;
-	typedef vector_iterator<const value_type>                    const_iterator;
-	typedef	reverse_iterator<iterator>                         reverse_iterator;
-	typedef ft::reverse_iterator<const_iterator>       const_reverse_iterator; //Why do I need ft:: ?
+	typedef vector_iterator<value_type>          iterator;
+	typedef vector_iterator<const value_type>    const_iterator;
+	typedef reverse_iterator<iterator>           reverse_iterator;
+	typedef ft::reverse_iterator<const_iterator> const_reverse_iterator; // Why do I need ft:: ?
 
 	// Why ptrdiff_t ? Because it is the signed equivalent of size_t.
 	// Good for pointer arithmetics
-	typedef std::ptrdiff_t                                      difference_type;
-	typedef std::size_t                                               size_type;
+	typedef std::ptrdiff_t difference_type;
+	typedef std::size_t    size_type;
 
   protected:
-
 	/** DATA **/
-	// We need to store an allocator inside our instance in order to call its 
+	// We need to store an allocator inside our instance in order to call its
 	// methods to, you know, allocate.
 	allocator_type allocator_;
 
@@ -67,7 +69,7 @@ class vector
 	size_type capacity_;
 
 	/** HELPER FUNCTIONS **/
-	
+
 	size_type range_check_(size_type n)
 	{
 		if (n >= size_)
@@ -78,7 +80,7 @@ class vector
 			stream << " while maximum addressable index is ";
 			if (size_ == 0)
 				stream << "none\n";
-			else 
+			else
 				stream << size_ - 1 << '\n';
 			throw std::out_of_range(stream.str());
 		}
@@ -96,29 +98,28 @@ class vector
 		allocator_.deallocate(data_, capacity_);
 	}
 
-
 	template <class InputIterator>
 	void assign_(InputIterator first, InputIterator last, allocator_type alloc)
 	{
 		// Clear, deallocate, allocate, copy data
 		destroy_data_();
 		deallocate_data_();
-		size_ = std::distance(first, last);
-		data_ = allocator_.allocate(size_);
+		size_     = std::distance(first, last);
+		data_     = allocator_.allocate(size_ * sizeof(value_type));
 		capacity_ = size_;
 		for (size_type i = 0; i < size_; ++i)
 			allocator_.construct(&data_[i], first[i]);
 	}
-
 
 	void assign_(size_type n, const value_type& val, allocator_type alloc)
 	{
 		// Clear, deallocate, allocate, copy data
 		destroy_data_();
 		deallocate_data_();
-		size_ = n;
-		data_ = allocator_.allocate(size_);
-		capacity_ = size_;;
+		size_     = n;
+		data_     = allocator_.allocate(size_ * sizeof(value_type));
+		capacity_ = size_;
+		;
 		for (size_type i = 0; i < size_; ++i)
 			allocator_.construct(&data_[i], val);
 	}
@@ -126,7 +127,7 @@ class vector
   public:
 	/** INTERFACE **/
 
-	// Default constructor. 
+	// Default constructor.
 	// It is explicit because we won't allow anything to be converted implicity to an allocator
 	// to an allocator.
 	explicit vector(const allocator_type& alloc = allocator_type()) // Calls Alloc<T> default ctor
@@ -142,12 +143,12 @@ class vector
 	}
 
 	// Range constructor
-	// Do some enable_if<> = 0 wizardry to ensure InputIterator is not anything
+	// Do some enable_if<> = 0 wizardry to ensure InputIterator is not a number
+	// For an explanation of the use of enable_if ->
+	// https://www.fluentcpp.com/2018/05/15/make-sfinae-pretty-1-what-value-sfinae-brings-to-code/
 	template <class InputIterator>
 	vector(InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type(),
-			typename enable_if<
-									std::is_integral< InputIterator l>
-								>::type = nullptr)
+	       typename enable_if<!is_integral<InputIterator>::value, std::nullptr_t>::type = nullptr)
 	{
 		assign_(first, last, alloc);
 	}
@@ -158,7 +159,7 @@ class vector
 		this->operator=(other);
 	}
 
-	// Destructor. 
+	// Destructor.
 	~vector()
 	{
 		destroy_data_();
@@ -176,7 +177,7 @@ class vector
 			if (rhs.size_ > capacity_) // If we don't have enough room, let's make some
 			{
 				deallocate_data_();
-				data_ = allocator_.allocate(rhs.size_);
+				data_     = allocator_.allocate(rhs.size_ * sizeof(value_type));
 				capacity_ = rhs.size_;
 			}
 			size_ = rhs.size_;
@@ -190,25 +191,25 @@ class vector
 
 	/* Iterators */
 
-	//The reason why we have const versions is because we can't return a plain iterator from a const vector !
-	iterator begin() 
+	// The reason why we have const versions is because we can't return a plain iterator from a const vector !
+	iterator begin()
 	{
-		return iterator(data_); //Calls our iterator's constructor !
+		return iterator(data_); // Calls our iterator's constructor !
 	}
 
 	const_iterator begin() const
 	{
-		return const_iterator(data_); 
+		return const_iterator(data_);
 	}
 
 	iterator end()
 	{
-		return iterator(data_ + size_); //Points to one past our storage
+		return iterator(data_ + size_); // Points to one past our storage
 	}
 
 	const_iterator end() const
 	{
-		return const_iterator(data_ + size_); 
+		return const_iterator(data_ + size_);
 	}
 
 	reverse_iterator rbegin()
@@ -218,17 +219,17 @@ class vector
 
 	const_reverse_iterator rbegin() const
 	{
-		return const_reverse_iterator(data_); 
+		return const_reverse_iterator(data_);
 	}
 
 	reverse_iterator rend()
 	{
-		return reverse_iterator(data_ + size_); 
+		return reverse_iterator(data_ + size_);
 	}
 
 	const_reverse_iterator rend() const
 	{
-		return const_reverse_iterator(data_ + size_); 
+		return const_reverse_iterator(data_ + size_);
 	}
 
 	/* Capacity */
@@ -238,7 +239,7 @@ class vector
 		return size_;
 	}
 
-	size_type max_size() const 
+	size_type max_size() const
 	{
 		return allocator_.max_size();
 	}
@@ -251,22 +252,23 @@ class vector
 			if (n > capacity_)
 			{
 				// Then put data in bigger container
-				pointer tmp = allocator_.allocate(n);
-				for (size_type i = 0; i < size_ ; ++i)
+				pointer tmp = allocator_.allocate(n * sizeof(value_type));
+				for (size_type i = 0; i < size_; ++i)
 				{
 					allocator_.construct(&tmp[i], data_[i]);
-					allocator_.destroy(&data_[i]); 
+					allocator_.destroy(&data_[i]);
 				}
 				deallocate_data_();
 				data_ = tmp;
 			}
-			for (--size_; size_ < n ; ++size_)
-				allocator_.construct(&data_[size_], value_type()); //Yes you can pass a constructor as a const ref to a value
+			for (--size_; size_ < n; ++size_)
+				allocator_.construct(&data_[size_],
+				                     value_type()); // Yes you can pass a constructor as a const ref to a value
 			capacity_ = size_;
 		}
 		else
 		{
-			for (--size_; size_ >= n ; --size_)
+			for (--size_; size_ >= n; --size_)
 				allocator_.destroy(&data_[size_]);
 			++size_;
 			capacity_ = size_;
@@ -280,7 +282,7 @@ class vector
 
 	bool empty() const
 	{
-		if (size_ ==  0)
+		if (size_ == 0)
 			return true;
 		else
 			return false;
@@ -292,21 +294,21 @@ class vector
 			throw std::length_error("vector::reserve");
 		else if (n > capacity_)
 		{
-			pointer tmp = allocator_.allocate(n);
-			for (size_type i = 0; i < size_ ; ++i)
+			pointer tmp = allocator_.allocate(n * sizeof(value_type));
+			for (size_type i = 0; i < size_; ++i)
 			{
 				allocator_.construct(&tmp[i], data_[i]);
 				allocator_.destroy(&data_[i]);
 			}
 			deallocate_data_();
-			data_ = tmp;
+			data_     = tmp;
 			capacity_ = n;
 		}
 	}
 
 	/* Element access */
 
-	// The reason we need const_reference versions is to be able to access 
+	// The reason we need const_reference versions is to be able to access
 	// elements in case the vector itself is declared as const.
 	// Reminder : In the case where an instance is declared const, having a func
 	// that returns a simple reference version is not an issue as long we are not
@@ -316,7 +318,7 @@ class vector
 		return data_[n];
 	}
 
-	const_reference operator[](size_type n) const 
+	const_reference operator[](size_type n) const
 	{
 		return data_[n];
 	}
@@ -326,7 +328,7 @@ class vector
 		return data_[range_check_(n)];
 	}
 
-	const_reference at(size_type n) const 
+	const_reference at(size_type n) const
 	{
 		return data_[range_check_(n)];
 	}
@@ -336,7 +338,7 @@ class vector
 		return data_[0];
 	}
 
-	const_reference front() const 
+	const_reference front() const
 	{
 		return data_[0];
 	}
@@ -346,7 +348,7 @@ class vector
 		return data_[size_ - 1];
 	}
 
-	const_reference back() const 
+	const_reference back() const
 	{
 		return data_[size_ - 1];
 	}
@@ -359,7 +361,8 @@ class vector
 	/* Modifiers */
 
 	template <class InputIterator>
-	void assign(InputIterator first, InputIterator last)
+	void assign(InputIterator first, InputIterator last,
+	            typename enable_if<!is_integral<InputIterator>::value, std::nullptr_t>::type = nullptr)
 	{
 		assign_(first, last, allocator_);
 	}
@@ -372,7 +375,7 @@ class vector
 	void push_back(const value_type& val)
 	{
 		if (capacity_ == size_)
-			resize(size_ * 2);
+			reserve(size_ * 2);
 		allocator_.construct(&data_[size_], val);
 		++size_;
 	}
@@ -383,11 +386,42 @@ class vector
 		allocator_.destroy(&data_[size_]);
 	}
 
-	iterator insert(iterator position, const value_type& val);
+	iterator insert(iterator position, const value_type& val)
+	{
+		insert(position, 1, val);
+		return position;
+	}
 
-	void insert(iterator position, size_type n, const value_type& val);
+	void insert(iterator position, size_type n, const value_type& val)
+	{
+		pointer pos = &(*position);
+		size_type new_size = size_ + n;
+		if (new_size > capacity_)
+			reserve(new_size * 2);
+		for (; size_ < new_size; ++size_, ++pos)
+		{
+			allocator_.construct(pos + n,  data_[size_]);
+			allocator_.destroy(pos);
+			allocator_.construct(pos, val);
+		}
+	}
 
-	template <class InputIterator> void insert(iterator position, InputIterator first, InputIterator last);
+	template <class InputIterator>
+	void insert(iterator position, InputIterator first, InputIterator last,
+	            typename enable_if<!is_integral<InputIterator>::value, std::nullptr_t>::type = nullptr)
+	{
+		pointer pos = &(*position);
+		size_type distance = std::distance(first, last);
+		size_type new_size = size_ + distance;
+		if (new_size > capacity_)
+			reserve(new_size * 2);
+		for (; size_ < new_size; ++size_, ++pos, ++first)
+		{
+			allocator_.construct(pos + distance,  data_[size_]);
+			allocator_.destroy(pos);
+			allocator_.construct(pos, *first);
+		}
+	}
 
 	iterator erase(iterator position)
 	{
@@ -395,7 +429,7 @@ class vector
 	}
 
 	// No need for reallocation
-	// The behaviour for last < first is not specified 
+	// The behaviour for last < first is not specified
 	iterator erase(iterator first, iterator last)
 	{
 		iterator end = this->end();
@@ -405,14 +439,14 @@ class vector
 			return last;
 		size_type distance = std::distance(first, last);
 		size_ -= distance;
-		for (; last < end ; --distance, ++first, ++last)
+		for (; last < end; --distance, ++first, ++last)
 		{
-			allocator_.destroy(&(*first)); 
+			allocator_.destroy(&(*first));
 			allocator_.construct(&(*first), *last);
 		}
-		for (; distance > 0 ; --distance, ++first)
+		for (; distance > 0; --distance, ++first)
 		{
-			allocator_.destroy(&(*first)); 
+			allocator_.destroy(&(*first));
 		}
 		return (++first);
 	}
@@ -420,8 +454,8 @@ class vector
 	void swap(vector& x)
 	{
 		vector<T> tmp = *this;
-		*this = x;
-		x = tmp;
+		*this         = x;
+		x             = tmp;
 	}
 
 	void clear()
@@ -436,13 +470,13 @@ class vector
 };
 
 template <class T, class Alloc>
-  bool operator== (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+bool operator==(const vector<T, Alloc>& lhs, const vector<T, Alloc>& rhs)
 {
 	if (lhs.size() != rhs.size())
 		return false;
-	typename vector<T, Alloc>::iterator lit = lhs.begin();
+	typename vector<T, Alloc>::iterator lit  = lhs.begin();
 	typename vector<T, Alloc>::iterator lend = lhs.end();
-	typename vector<T, Alloc>::iterator rit = rhs.begin();
+	typename vector<T, Alloc>::iterator rit  = rhs.begin();
 	typename vector<T, Alloc>::iterator rend = rhs.end();
 	while (lit != lend)
 	{
@@ -454,22 +488,20 @@ template <class T, class Alloc>
 	return true;
 }
 
-
 template <class T, class Alloc>
-  bool operator!= (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+bool operator!=(const vector<T, Alloc>& lhs, const vector<T, Alloc>& rhs)
 {
 	return !(lhs == rhs);
 }
 
-
 template <class T, class Alloc>
-  bool operator<  (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+bool operator<(const vector<T, Alloc>& lhs, const vector<T, Alloc>& rhs)
 {
-	typedef typename vector<T,Alloc>::iterator	iterator;
+	typedef typename vector<T, Alloc>::iterator iterator;
 
-	iterator lit = lhs.begin();
+	iterator lit   = lhs.begin();
 	iterator llast = --(lhs.end());
-	iterator rit = rhs.begin();
+	iterator rit   = rhs.begin();
 	iterator rlast = --(rhs.end());
 
 	// This loop stops on the first diff or once vector end is reach
@@ -478,7 +510,7 @@ template <class T, class Alloc>
 		++rit;
 		++lit;
 	}
-	// Special case where one is the subset of another 
+	// Special case where one is the subset of another
 	if (*lit == *rit) // Means the loop stopped because one end was reached
 	{
 		// One is strictly a subset of the other
@@ -488,20 +520,20 @@ template <class T, class Alloc>
 }
 
 template <class T, class Alloc>
-  bool operator>= (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+bool operator>=(const vector<T, Alloc>& lhs, const vector<T, Alloc>& rhs)
 {
 	return !(lhs < rhs);
 }
 
 template <class T, class Alloc>
-  bool operator>  (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+bool operator>(const vector<T, Alloc>& lhs, const vector<T, Alloc>& rhs)
 {
 	// We just swap the order of ther args to use operator<
 	return rhs < lhs;
 }
 
 template <class T, class Alloc>
-  bool operator<= (const vector<T,Alloc>& lhs, const vector<T,Alloc>& rhs)
+bool operator<=(const vector<T, Alloc>& lhs, const vector<T, Alloc>& rhs)
 {
 	return !(lhs > rhs);
 }

@@ -2,6 +2,7 @@
 #define SIMPLE_AA_TREE_HPP
 
 #include <memory>
+#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -9,79 +10,73 @@
 namespace ft
 {
 
-
 template <typename Key, typename Value>
 class AA_tree;
-
-
-// On the other hand, we don't care about the key and value arguments. Could it lead to issues ?
-//#define NIL &nil_node
-//template <typename Key, typename Value>
-//static typename AA_tree<Key, Value>::AA_node nil_node(0, 0, 0); // Definition with constructor
 
 template <typename Key, typename Value>
 class AA_tree
 {
-  public:
-	struct AA_node
+# define NIL get_nil_()
+  protected:
+	struct AA_node;
+
+	// This allows us to use our tree with non default-constructible Key and Value
+	struct AA_base_node
+	{
+		AA_node* left;
+		AA_node* right;
+		int      level;
+
+		/*Default ctor*/ AA_base_node() :
+			left(NULL),
+			right(NULL),
+			level(0) {}
+
+		protected:
+		/*Level ctor*/ AA_base_node(AA_node *left, AA_node * right, int lvl) :
+			left(left),
+			right(right), 
+			level(lvl) {}
+	};
+
+	struct AA_node : public AA_base_node
 	{
 		Key      key;
 		Value    value;
-		int      level;
-		AA_node* left;
-		AA_node* right;
 
 		/*Default ctor*/ AA_node() :
-			//left(&nil_node),
-			//right(&nil_node),
-			key(0),
-			value(0),
-			level(0),
-			left(0),
-			right(0) {}
+			AA_base_node(NIL, NIL, 1),
+			key(Key()),
+			value(Value()) {}
 
-		/*Constructor*/ AA_node(Key k, Value v, int lvl, AA_node *l, AA_node *r) :
-			//left(&nil_node),
-			//right(&nil_node),
+		/*Constructor*/ AA_node(Key k, Value v) :
+			AA_base_node(NIL, NIL, 1),
 			key(k),
-			value(v),
-			level(lvl),
-			left(l),
-			right(r) {}
-
-		/*Constructor*/ AA_node(Key k, Value v, int lvl) :
-			//left(&nil_node),
-			//right(&nil_node),
-			key(k),
-			value(v),
-			level(lvl),
-			left(get_nil_()),
-			right(get_nil_()) {}
+			value(v) {}
 	};
 
 	typedef AA_node                 node_type;
 	typedef AA_node*                node_pointer;
 	typedef std::size_t             size_type;
 
-  protected:
+	/* AA_tree<Key, Value> class */
 
 	node_pointer           root_;
 	size_type              size_;
 
 	// Singleton for the nil node ? To be sure we have the same template arguments ?
-	static node_pointer get_nil_() {
-#define NIL get_nil_()
-		// Only runs once
-		static AA_node nil; // Only works if Key and Value are default constructible...
-		// Then we redirect nil's left and right in the tree ctor
-		return &nil;
+	static AA_node *get_nil_() {
+		// Only run once ftw !
+		static AA_base_node nil; // We'll redirect nil's left and right in AA_tree's constructor
+		return static_cast<AA_node *>(&nil);
 	}
 
 	/*TREE BALANCING*/
 
 	node_pointer skew_(node_pointer root)
 	{
-		if (root->left->level == root->level) // red node to our left?
+		if (root->level &&
+				root->left->level == root->level) // red node to our left?
 			return rotate_right_(root);
 		else
 			return root; // else no change neeeded
@@ -99,7 +94,8 @@ class AA_tree
 
 	node_pointer split_(node_pointer root)
 	{
-		if (root->right->right->level == root->level) // 2 red nodes on our right ?
+		if (root->level &&
+				root->right->right->level == root->level) // 2 red nodes on our right ?
 			return rotate_left_(root);
 		else
 			return root; //else no change needed
@@ -120,7 +116,7 @@ class AA_tree
 
 	void  update_level_(node_pointer node)
 	{
-		int ideal_level = 1 + min(node->left->level, node->right->level);
+		int ideal_level = 1 + std::min(node->left->level, node->right->level);
 		// node's level above ideal ? 
 		if (node->level > ideal_level) // necessary test bc must not be touched if below ideal level (red node)
 		{
@@ -139,10 +135,15 @@ class AA_tree
 		node->right->right = skew_(node->right->right);
 		node = split_(node);
 		node->right = split_(node->right);
+		return (node);
 	}
 
 	node_pointer in_order_successor_(node_pointer node)
 	{
+		if (node->right == NIL)
+			return node;
+		else
+			node = node->right;
 		while (node->left != NIL)
 			node = node->left;
 		return node;
@@ -150,6 +151,10 @@ class AA_tree
 
 	node_pointer in_order_predecessor_(node_pointer node)
 	{
+		if (node->left == NIL)
+			return node;
+		else
+			node = node->left;
 		while (node->right != NIL)
 			node = node->right;
 		return node;
@@ -162,7 +167,7 @@ class AA_tree
 		if (current_node == NIL) // fell out of the tree?
 		{
 			++size_;
-			current_node = new node_type(k, v, 1); // -> create a new leaf node here
+			current_node = new node_type(k, v); // -> create a new leaf node here
 		}
 		else if (k < current_node->key) // key is smaller?
 			current_node->left = insert_(k, v, current_node->left); // ->insert left
@@ -176,13 +181,13 @@ class AA_tree
 	// This implementation does not bother with special cases that do not need rebalancing
 	node_pointer remove_(Key k, node_pointer node)
 	{
-		if (node == NIL) // fell out of tree, key does not exist
-			return node; // result in a no-op
-		else if (k < node->key)
-			node = remove_(k, node->left);
+		if (node == NIL)                // Fell out of tree, key does not exist
+			return node;                                               // No-op
+		else if (k < node->key) 
+			node->left = remove_(k, node->left);        // Look in left subtree
 		else if (k > node->key)
-			node = remove_(k, node->right);
-		else
+			node->right = remove_(k, node->right);     // Look in right subtree
+		else                                                       //Found it !
 		{
 			if (node->right == NIL && node->left == NIL) // It's a leaf node, remove it
 			{
@@ -190,12 +195,18 @@ class AA_tree
 				--size_;
 				return NIL;
 			}
-			else // Find successor, copy its values and remove successor instead
+			else if (node->left == NIL) // No left child ? Means it is a black leaf node. Replace with its red child
 			{
-				node_pointer successor = in_order_successor(node);
+				node->key = node->right->key;
+				node->value = node->right->value;
+				node->right = remove_(node->right->key, node->right);
+			}
+			else // Find succesor, copy its values and remove succesor instead
+			{
+				node_pointer successor = in_order_successor_(node);
 				node->key = successor->key;
 				node->value = successor->value;
-				remove_(successor->key, node->right);
+				node->right = remove_(successor->key, node->right);
 			}
 		}
 		return fixup_after_delete_(node);
@@ -204,10 +215,10 @@ class AA_tree
 	node_pointer clear_(node_pointer node)
 	{
 		if (node->left != NIL)
-			node = clear_(node->left);
-		if (node->left != NIL)
-			node = clear_(node->right);
-		// If both have returned NIL, our node is now a leaf nodek
+			node->left = clear_(node->left);
+		if (node->right != NIL)
+			node->right = clear_(node->right);
+		// If both have returned NIL, our node is now a leaf node
 		if (node != NIL && node->right == NIL && node->left == NIL) // It's a leaf node, remove it
 		{
 			delete node;
@@ -218,10 +229,11 @@ class AA_tree
 	}
 
   public:
-	/*Constructor*/ AA_tree() : root_(get_nil_()), size_(0)
+	/*Constructor*/ AA_tree() : root_(NIL), size_(0)
 	{
-		get_nil_()->left = get_nil_();
-		get_nil_()->right = get_nil_();
+		// Set NIL to point back to itself because it can't be done at instantiation
+		NIL->left = NIL;
+		NIL->right = NIL;
 	}
 
 	/*Destructor*/ ~AA_tree()
@@ -248,35 +260,53 @@ class AA_tree
 
 	void print_node(std::stringstream& ss, node_pointer node)
 	{
-		if (node->left != NIL)
+		if (node != NIL)
 		{
-			ss << node->key << " -> " << node->left->key << '\n';
-			print_node(ss, node->left);
-		}
-		if (node->right != NIL)
-		{
-			if (node->right->level == node->level)
+			ss << node->key << " [label=< <b>" << node->key << "</b><br/> <sub>" << node->level << "</sub>>]\n\t";
+			if (node->left != NIL)
 			{
-				ss << "{rank=same; " << node->key << "; " << node->right->key << "}\n";
-				ss << node->key << " [color=red]\n";
+				if (node->left->level == node->level)
+				{
+					ss << "{rank=same; " << node->key << "; " << node->left->key << "}\n\t";
+					ss << node->left->key << " [color=red]\n\t";
+				}
+				ss << node->key << " -> " << node->left->key << "\n\t";
+				print_node(ss, node->left);
 			}
-			ss << node->key << " -> " << node->right->key << '\n';
-			print_node(ss, node->right);
+			if (node->right != NIL)
+			{
+				if (node->right->level == node->level)
+				{
+					ss << "{rank=same; " << node->key << "; " << node->right->key << "}\n\t";
+					ss << node->right->key << " [color=red]\n\t";
+				}
+				ss << node->key << " -> " << node->right->key << "\n\t";
+				print_node(ss, node->right);
+			}
 		}
 	}
 
 # undef NIL
 
-#define DEFAULT_FILENAME "tree.dot"
+# define DEFAULT_FILENAME "tree"
 	void print_dot()
+	{
+		static int n;
+
+		print_dot(++n);
+	}
+
+	void print_dot(int n)
 	{
 		std::stringstream ss;
 		print_node(ss, root_);
 
-		std::ofstream file(DEFAULT_FILENAME);
-		file << "digraph {\n";
+		std::stringstream title;
+		title << DEFAULT_FILENAME << n << ".dot";
+		std::ofstream file(title.str().c_str());
+		file << "digraph {\n\n\t";
 		file << ss.str();
-		file << "}\n";
+		file << "\n}";
 	}
 }; // class AA_tree
 

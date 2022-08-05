@@ -1,30 +1,27 @@
+#include "algorithms.hpp"
 #include "enable_if.hpp"
-#include <iterator>
+#include "is_integral.hpp"
+#include "iterator_traits.hpp"
+#include "remove_cv.hpp"
+#include "reverse_iterator.hpp"
+#include "reverse_vector_iterator.hpp"
+#include "vector.hpp"
+#include "vector_iterator.hpp"
 
-template< typename T>
-class some_bidirectional_iterator 
-{
-	public:
-	typedef std::bidirectional_iterator_tag iterator_category;
-	typedef std::ptrdiff_t difference_type;
-	typedef T value_type;
-	typedef T* pointer;
-	typedef T& reference;
-
-	protected:
-	pointer current_;
-
-	public:
-
-	reference operator+(difference_type n)
-	{
-		return some_bidirectional_iterator<T>(current_ + n);
-	}
-};
+#include <iostream>
 
 int main()
 {
-	char *msg = "Hello world";
+	ft::vector<int> vec;
 
-	std::reverse_iterator(msg);
+	vec.push_back(1);
+	vec.push_back(2);
+	vec.push_back(3);
+
+	vec.pop_back();
+	vec.pop_back();
+	vec.pop_back();
+
+	std::cout << vec.capacity() << std::endl;
+	std::cout << vec.size() << std::endl;
 }
