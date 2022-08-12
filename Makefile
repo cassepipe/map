@@ -2,17 +2,19 @@
 ##	VARIABLES	##
 ##################
 
-NAME			=	ex02
+SHELL			=	zsh
 
-CXX				=	c++
+NAME			=	a.out
+
+CXX				=	g++
 
 INCLUDE_FLAGS	=
 
 #Add -Werror before correction 
-CXXFLAGS		=	${INCLUDE_FLAGS} -Wall -Wextra  -std=c++98
+CXXFLAGS		=	${INCLUDE_FLAGS} -Wall -Wextra -g3 -std=c++98
 
 #Our beloved address sanitizer
-#ASAN_FLAG			=	-fsanitize=address	
+ASAN_FLAG			=	-fsanitize=address	
 CXXFLAGS			+=	$(ASAN_FLAG)	
 LDFLAGS				+=	$(ASAN_FLAG)	
 
@@ -47,6 +49,7 @@ obj:
 				mkdir obj
 clean:			
 				rm -rf obj
+				rm -rf tree*
 
 fclean:			clean
 				rm -rf $(NAME)
@@ -58,5 +61,6 @@ print_name:
 
 run:			all
 				./$(NAME)
+				./visu.zsh
 
 .PHONY:			all clean fclean re print_name run

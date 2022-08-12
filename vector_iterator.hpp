@@ -18,7 +18,8 @@
 
 namespace ft
 {
-template <typename T> class vector_iterator
+template <typename T>
+	class vector_iterator
 {
   protected:
 	T*    current_;
@@ -159,17 +160,18 @@ template <typename T> class vector_iterator
 		return lhs.current_ < rhs.current_;
 	}
 
-	template<typename RightIterator, typename LeftIterator>
-	friend bool operator>(const vector_iterator<RightIterator>& lhs, const vector_iterator<LeftIterator>& rhs)
-	{
-		return lhs.current_ > rhs.current_;
-	}
-};
+}; // class vector_iterator
 
 template<typename RightIterator, typename LeftIterator>
 bool operator!=(const vector_iterator<RightIterator>& lhs, const vector_iterator<LeftIterator>& rhs)
 {
 	return !(lhs == rhs);
+}
+
+template<typename RightIterator, typename LeftIterator>
+bool operator>(const vector_iterator<RightIterator>& lhs, const vector_iterator<LeftIterator>& rhs)
+{
+	return rhs < lhs;
 }
 
 template<typename RightIterator, typename LeftIterator>

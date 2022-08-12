@@ -1,0 +1,17 @@
+digraph {
+
+	5 [label=< <b>5</b><br/> <sub>3</sub>>]
+	5 -> 3
+	3 [label=< <b>3</b><br/> <sub>2</sub>>]
+	3 -> 0
+	0 [label=< <b>0</b><br/> <sub>1</sub>>]
+	3 -> 4
+	4 [label=< <b>4</b><br/> <sub>1</sub>>]
+	5 -> 7
+	7 [label=< <b>7</b><br/> <sub>2</sub>>]
+	7 -> 6
+	6 [label=< <b>6</b><br/> <sub>1</sub>>]
+	7 -> 8
+	8 [label=< <b>8</b><br/> <sub>1</sub>>]
+	
+}

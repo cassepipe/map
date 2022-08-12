@@ -1,6 +1,7 @@
 #ifndef IS_INTEGRAL_HPP
 #define IS_INTEGRAL_HPP
 
+//#include <uchar.h>
 #include "remove_cv.hpp"
 
 
@@ -29,17 +30,17 @@ struct is_integral_helper<char>
 	static bool const value = true; 
 };
 
-template <>
-struct is_integral_helper<char16_t>
-{
-	static bool const value = true; 
-};
+//template <>
+//struct is_integral_helper<char16_t>
+//{
+//    static bool const value = true; 
+//};
 
-template <>
-struct is_integral_helper<char32_t>
-{
-	static bool const value = true; 
-};
+//template <>
+//struct is_integral_helper<char32_t>
+//{
+//    static bool const value = true; 
+//};
 
 template <>
 struct is_integral_helper<wchar_t>

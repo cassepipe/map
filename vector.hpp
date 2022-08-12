@@ -22,12 +22,10 @@
 #include <cstddef>
 #include <memory>
 #include <sstream>
-#include <tuple>
-#include <type_traits>
 
 namespace ft
 {
-template <typename T, typename Alloc = std::allocator<T>> // Space is actually required I think
+template <typename T, typename Alloc = std::allocator<T> > // Space is actually required I think
 class vector
 {
   public:
@@ -45,7 +43,7 @@ class vector
 	// same type signature. Writing our own const-friendly allocator would work
 	typedef vector_iterator<value_type>          iterator;
 	typedef vector_iterator<const value_type>    const_iterator;
-	typedef reverse_iterator<iterator>           reverse_iterator;
+	typedef ft::reverse_iterator<iterator>           reverse_iterator;
 	typedef ft::reverse_iterator<const_iterator> const_reverse_iterator; // Why do I need ft:: ?
 
 	// Why ptrdiff_t ? Because it is the signed equivalent of size_t.
@@ -148,7 +146,7 @@ class vector
 	// https://www.fluentcpp.com/2018/05/15/make-sfinae-pretty-1-what-value-sfinae-brings-to-code/
 	template <class InputIterator>
 	vector(InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type(),
-	       typename enable_if<!is_integral<InputIterator>::value, std::nullptr_t>::type = nullptr)
+	       typename enable_if<!is_integral<InputIterator>::value, void*>::type = 0)
 	{
 		assign_(first, last, alloc);
 	}
@@ -262,8 +260,7 @@ class vector
 				data_ = tmp;
 			}
 			for (--size_; size_ < n; ++size_)
-				allocator_.construct(&data_[size_],
-				                     value_type()); // Yes you can pass a constructor as a const ref to a value
+				allocator_.construct(&data_[size_], val); 
 			capacity_ = size_;
 		}
 		else
@@ -362,7 +359,7 @@ class vector
 
 	template <class InputIterator>
 	void assign(InputIterator first, InputIterator last,
-	            typename enable_if<!is_integral<InputIterator>::value, std::nullptr_t>::type = nullptr)
+	            typename enable_if<!is_integral<InputIterator>::value, int>::type = 0)
 	{
 		assign_(first, last, allocator_);
 	}
@@ -408,7 +405,7 @@ class vector
 
 	template <class InputIterator>
 	void insert(iterator position, InputIterator first, InputIterator last,
-	            typename enable_if<!is_integral<InputIterator>::value, std::nullptr_t>::type = nullptr)
+	            typename enable_if<!is_integral<InputIterator>::value, int>::type = 0)
 	{
 		pointer pos = &(*position);
 		size_type distance = std::distance(first, last);
@@ -474,10 +471,12 @@ bool operator==(const vector<T, Alloc>& lhs, const vector<T, Alloc>& rhs)
 {
 	if (lhs.size() != rhs.size())
 		return false;
+
 	typename vector<T, Alloc>::iterator lit  = lhs.begin();
 	typename vector<T, Alloc>::iterator lend = lhs.end();
 	typename vector<T, Alloc>::iterator rit  = rhs.begin();
 	typename vector<T, Alloc>::iterator rend = rhs.end();
+
 	while (lit != lend)
 	{
 		if (*lit != *rit)
