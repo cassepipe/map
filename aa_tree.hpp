@@ -28,21 +28,25 @@ class AA_tree
 	// Singleton for the nil node. Easy because benefits from the class templating
 	static AA_node *get_nil_()
 	{
-		static AA_base_node nil; // We'll redirect nil's left and right in AA_tree's constructor
+		static AA_base_node nil; 
 		return static_cast<AA_node *>(&nil);
 	}
 #define NIL get_nil_()
 
 	// This allows us to use our tree with non default-constructible Key and Value
+	// because using an having a Key and Vlaue as members would force the use of Key() and Value()
 	struct AA_base_node
 	{
 		AA_node *left;
 		AA_node *right;
 		int      level;
 
-		/*Default ctor*/ AA_base_node() : left(NULL), right(NULL), level(0)
-		{
-		}
+		// To make the the nil node in get_nil()
+		/*Default ctor*/ AA_base_node() :
+			left(static_cast<AA_node*>(this)),
+			right(static_cast<AA_node*>(this)),
+			level(0)
+		{ }
 
 	  protected:
 		/*Level ctor*/ AA_base_node(AA_node *left, AA_node *right, int lvl) : left(left), right(right), level(lvl)
@@ -101,6 +105,10 @@ class AA_tree
 		oldroot_->left        = newroot_->right;
 		newroot_->right       = oldroot_;
 
+		newroot_->parent = oldroot_->parent;
+		newroot_->right->parent = newroot_;
+		newroot_->left->parent = newroot_;
+
 		// return pointer of the new upper node
 		return newroot_;
 	}
@@ -118,6 +126,10 @@ class AA_tree
 		node_pointer newroot_ = oldroot_->right;
 		oldroot_->right       = newroot_->left;
 		newroot_->left        = oldroot_;
+
+		newroot_->parent = oldroot_->parent;
+		newroot_->right->parent = newroot_;
+		newroot_->left->parent = newroot_;
 
 		// promote newroot_ to next higher level
 		newroot_->level += 1;
@@ -244,12 +256,14 @@ class AA_tree
 	}
 
   public:
-	/*Constructor*/ AA_tree(Alloc alloc = Alloc())
-	    : root_(NIL), size_(0), node_alloc_(alloc) // node_alloc_ and alloc are different types, implicit conversion
+	/*Constructor*/ AA_tree(Alloc alloc = Alloc()) :
+		root_(NIL),
+		size_(0),
+		node_alloc_(alloc) // node_alloc_ and alloc are different types, implicit conversion thanks to allocator's special ctor
 	{
-		// Set NIL to point back to itself because it can't be done at instantiation
-		NIL->left  = NIL;
-		NIL->right = NIL;
+		// Set NIL to point back to itself because it can't be done at instantiation time
+		//NIL->left  = NIL;
+		//NIL->right = NIL;
 	}
 
 	/*Destructor*/ ~AA_tree()
@@ -327,31 +341,85 @@ class AA_tree
 	{
 	  protected:
 		/* STATE */
+		node_pointer             root_;
 		node_pointer             current_;
+
+		/* HELPERS */
+
+		node_pointer leftmost_(node_pointer node) const
+		{
+			while (node->left != NIL)
+				node = node->left;
+			return node;
+		}
+
+		node_pointer rightmost_(node_pointer node) const
+		{
+			while (node->right != NIL)
+				node = node->right;
+			return node;
+		}
 
 	  public:
 
-		iterator(node_pointer root)
-		{
-		}
+		/* Constructor */ iterator(node_pointer root, node_pointer current = NULL)
+			: root_(root), current_(current)
+		{ }
 
-		iterator(iterator const &src) : current_(src.current_)
-		{
-		}
+		/* Copy Constructor */ iterator(iterator const &other)
+			: root_(other.current_), current_(other.current_)
+		{ }
 
 		iterator &operator=(iterator const &rhs)
 		{
 			current_ = rhs.current_;
+			root_ = rhs.root_;
 			return *this;
 		}
 
+		// Iterator will cycle forward with passing by an end's marker
 		iterator &operator++()
 		{
+			if (root_ == NIL) // Tree empty ?
+				current_ = NULL;
+			else if (current_ == NULL) 
+				current_ = leftmost_(root_);
+			// If tree was empty but stuff got in since last call
+			 // If has successor...
+			else if (current_->right != NIL)
+				current_ = leftmost_(current_->right); // ... goes to successor
+			// Else if it has no successor under itself
+			else if (current_ == current_->parent->left) // If it is its parent's left child
+				current_ = current_->parent; // ... it becomes its parent
+			// Then it's its parent's right child
+			while (current_ == current_->parent->right) // Go up the succession of right children
+				current_ = current_->parent;
+			if (current_ == current_->parent->left) // if it is its parent's left child
+				current_ = current_->parent; // ... it becomes its parent
+			else
+				current_ = NULL; // ..else NULL, end is reached
 			return *this;
 		}
 
 		iterator &operator--()
 		{
+			if (root_ == NIL)
+				current_ = NULL;
+			else if (current_ == NULL)
+				current_ = rightmost_(root_);
+			// If tree was empty but stuff got in since last call
+			else if (current_->left != NIL)
+				current_ = rightmost_(current_->left);
+			else if (current_->parent && current_ == current_->parent->right)
+				current_ = current_->parent;
+			else if (current_->parent)
+			{
+				while (current_->parent && current_ == current_->parent->left)
+					current_ = current_->parent;
+				current_ = current_->parent && current_ == current_->parent->right ? current_->parent : NULL;
+			}
+			else
+				current_ = NULL;
 			return *this;
 		}
 
@@ -369,7 +437,7 @@ class AA_tree
 			return tmp;
 		}
 
-		node_pointer operator->() const
+		mapped_type * operator->() const
 		{
 			return &(current_->value);
 		}
@@ -389,6 +457,16 @@ class AA_tree
 			return current_ != rhs.current_;
 		}
 	};
+
+	iterator begin() const
+	{
+		return ++iterator(root_);
+	}
+
+	iterator end() const
+	{
+		return iterator(root_);
+	}
 
 #undef NIL
 }; // class AA_tree
