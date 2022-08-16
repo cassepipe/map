@@ -13,14 +13,13 @@
 namespace ft
 {
 
-template <typename Key, typename Value, typename KeyCmpFn,
-          typename Alloc> 
-class AA_tree;
-
 template <typename Key, typename Value, typename KeyCmpFn = std::less<Key>,
           typename Alloc = std::allocator<std::pair<const Key, Value> > >
 class AA_tree
 {
+  public:
+	class iterator;
+
   protected:
 	struct AA_base_node;
 	struct AA_node;
@@ -42,16 +41,19 @@ class AA_tree
 		int      level;
 
 		// To make the the nil node in get_nil()
-		/*Default ctor*/ AA_base_node() :
+		// NIL wants to pretend it is just like any other node
+		/*Default Constructor*/ AA_base_node() :
 			left(static_cast<AA_node*>(this)),
 			right(static_cast<AA_node*>(this)),
 			level(0)
 		{ }
 
 	  protected:
-		/*Level ctor*/ AA_base_node(AA_node *left, AA_node *right, int lvl) : left(left), right(right), level(lvl)
-		{
-		}
+		/*Constructor*/ AA_base_node(AA_node *left, AA_node *right, int lvl) :
+			left(left),
+			right(right),
+			level(lvl)
+		{ }
 	};
 
 	struct AA_node : public AA_base_node
@@ -64,29 +66,27 @@ class AA_tree
 		{
 		}
 
-		/*Constructor*/ AA_node(Key k, Value v) : AA_base_node(NIL, NIL, 1), key(k), value(v), parent(NULL)
-		{
-		}
-
 		/*Constructor*/ AA_node(Key k, Value v, AA_node *p) : AA_base_node(NIL, NIL, 1), key(k), value(v), parent(p)
 		{
 		}
 	};
 
-	typedef AA_node     node_type;
-	typedef AA_node *   node_pointer;
-	typedef std::size_t size_type;
-	typedef Key         key_type;
-	typedef Value       mapped_type;
+	typedef AA_node        node_type;
+	typedef AA_node *      node_pointer;
+	typedef std::size_t    size_type;
+	typedef Key            key_type;
+	typedef Value          mapped_type;
+	typedef typename AA_tree<Key, const Value, KeyCmpFn, Alloc>::iterator const_iterator;
 
 	// the template keyword is only here so that the < can be correctly parsed
-	typedef typename Alloc::template rebind<node_type>::other node_allocator_type; // NEW CODE
+	typedef typename Alloc::template rebind<node_type>::other node_allocator_type;
+	// Were we able to use c++11, we would have used std::allocator_traits like this
 	// typedef typename std::allocator_traits<Alloc>::template rebind_alloc<node_type>		node_allocator_type;
 
 	/*DATA*/
 	node_pointer        root_;
 	size_type           size_;
-	node_allocator_type node_alloc_; // NEW CODE
+	node_allocator_type node_alloc_;
 	KeyCmpFn            compare_func_;
 
 	/*TREE BALANCING*/
@@ -101,15 +101,17 @@ class AA_tree
 
 	node_pointer rotate_right_(node_pointer oldroot_)
 	{
+		// Right rotation
 		node_pointer newroot_ = oldroot_->left;
 		oldroot_->left        = newroot_->right;
 		newroot_->right       = oldroot_;
 
+		// Updating parent information
 		newroot_->parent = oldroot_->parent;
 		newroot_->right->parent = newroot_;
 		newroot_->left->parent = newroot_;
 
-		// return pointer of the new upper node
+		// return pointer of the node that came out on top
 		return newroot_;
 	}
 
@@ -123,10 +125,12 @@ class AA_tree
 
 	node_pointer rotate_left_(node_pointer oldroot_)
 	{
+		//Left rotation
 		node_pointer newroot_ = oldroot_->right;
 		oldroot_->right       = newroot_->left;
 		newroot_->left        = oldroot_;
 
+		// Updating parent information
 		newroot_->parent = oldroot_->parent;
 		newroot_->right->parent = newroot_;
 		newroot_->left->parent = newroot_;
@@ -134,7 +138,7 @@ class AA_tree
 		// promote newroot_ to next higher level
 		newroot_->level += 1;
 
-		// return pointer of the new upper node
+		// return pointer of the node that came out on top
 		return newroot_;
 	}
 
@@ -228,7 +232,7 @@ class AA_tree
 				node->value = node->right->value;
 				node->right = remove_(node->right->key, node->right);
 			}
-			else // Find succesor, copy its values and remove succesor instead
+			else // Find succesor, copy its values and remove successor instead
 			{
 				node_pointer successor = in_order_successor_(node);
 				node->key              = successor->key;
@@ -261,9 +265,6 @@ class AA_tree
 		size_(0),
 		node_alloc_(alloc) // node_alloc_ and alloc are different types, implicit conversion thanks to allocator's special ctor
 	{
-		// Set NIL to point back to itself because it can't be done at instantiation time
-		//NIL->left  = NIL;
-		//NIL->right = NIL;
 	}
 
 	/*Destructor*/ ~AA_tree()
@@ -276,17 +277,17 @@ class AA_tree
 		root_ = clear_(root_);
 	}
 
-	// Because caller should not have access to structure's raw data
 	void insert(Key k, Value v)
 	{
 		root_ = insert_(k, v, root_, root_);
 	}
 
-	// Because caller should not have access to structure's raw data
 	void remove(Key k)
 	{
 		root_ = remove_(k, root_);
 	}
+
+	/* DEBUG */
 
 	void print_node(std::stringstream &ss, node_pointer node)
 	{
@@ -337,6 +338,8 @@ class AA_tree
 		file << "\n}";
 	}
 
+	/* ITERATOR */
+
 	class iterator
 	{
 	  protected:
@@ -369,6 +372,14 @@ class AA_tree
 		/* Copy Constructor */ iterator(iterator const &other)
 			: root_(other.current_), current_(other.current_)
 		{ }
+
+
+		// Conversion operator
+		// Allows non-const to const implicit conversion !!!
+		operator typename AA_tree<Key, Value, KeyCmpFn, Alloc>::const_iterator() const
+		{
+			return AA_tree<Key, const Value, KeyCmpFn, Alloc>::iterator(root_, current_);
+		}
 
 		iterator &operator=(iterator const &rhs)
 		{
@@ -457,6 +468,7 @@ class AA_tree
 			return current_ != rhs.current_;
 		}
 	};
+
 
 	iterator begin() const
 	{
