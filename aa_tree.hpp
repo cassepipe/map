@@ -376,7 +376,7 @@ class AA_tree
 
 		// Conversion operator
 		// Allows non-const to const implicit conversion !!!
-		operator typename AA_tree<Key, Value, KeyCmpFn, Alloc>::const_iterator() const
+		operator typename AA_tree<Key, const Value, KeyCmpFn, Alloc>::iterator() const
 		{
 			return AA_tree<Key, const Value, KeyCmpFn, Alloc>::iterator(root_, current_);
 		}
