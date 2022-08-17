@@ -21,13 +21,38 @@ class AA_tree
 	struct AA_base_node;
 	struct AA_node;
 
+  public:
+	class iterator;
+	class const_iterator;
+
+	typedef Key            key_type;
+	typedef Value          mapped_type;
+	typedef AA_node        node_type;
+	typedef AA_node *      node_pointer;
+	typedef std::size_t    size_type;
+
+	// the template keyword is only here so that the < can be correctly parsed
+	typedef typename Alloc::template rebind<node_type>::other node_allocator_type;
+	// Were we able to use c++11, we would have used std::allocator_traits like this
+	// typedef typename std::allocator_traits<Alloc>::template rebind_alloc<node_type>		node_allocator_type;
+	
+  protected:
+
+	/* DATA */
+	node_pointer        root_;
+	size_type           size_;
+	node_allocator_type node_alloc_;
+	KeyCmpFn            compare_func_;
+
 	// Singleton for the nil node. Easy because benefits from the class templating
+#define NIL get_nil_()
 	static AA_node *get_nil_()
 	{
 		static AA_base_node nil; 
 		return static_cast<AA_node *>(&nil);
 	}
-#define NIL get_nil_()
+
+	/* NESTED NODE CLASSES */
 
 	// This allows us to use our tree with non default-constructible Key and Value
 	// because using an having a Key and Vlaue as members would force the use of Key() and Value()
@@ -73,32 +98,56 @@ class AA_tree
 		{ }
 	};
 
-  public:
+	/* HELPERS */
 
-	class iterator;
+	static node_pointer update_root(node_pointer root)
+	{
+		// We chose for the root to be its own parent
+		//while (root != root->parent)
+		//    root = root->parent;
+		return root;
+	}
 
-	typedef Key            key_type;
-	typedef Value          mapped_type;
-	typedef AA_node        node_type;
-	typedef AA_node *      node_pointer;
-	typedef std::size_t    size_type;
+	static node_pointer leftmost_(node_pointer node)
+	{
+		while (node->left != NIL)
+			node = node->left;
+		return node;
+	}
 
-	// the template keyword is only here so that the < can be correctly parsed
-	typedef typename Alloc::template rebind<node_type>::other node_allocator_type;
-	// Were we able to use c++11, we would have used std::allocator_traits like this
-	// typedef typename std::allocator_traits<Alloc>::template rebind_alloc<node_type>		node_allocator_type;
-	
-  protected:
+	static node_pointer rightmost_(node_pointer node)
+	{
+		while (node->right != NIL)
+			node = node->right;
+		return node;
+	}
 
-	/* DATA */
-	node_pointer        root_;
-	size_type           size_;
-	node_allocator_type node_alloc_;
-	KeyCmpFn            compare_func_;
+	static node_pointer in_order_successor_(node_pointer node)
+	{
+		if (node->right == NIL)
+			return node;
+		else
+			node = node->right;
+		while (node->left != NIL)
+			node = node->left;
+		return node;
+	}
+
+	static node_pointer in_order_predecessor_(node_pointer node)
+	{
+		if (node->left == NIL)
+			return node;
+		else
+			node = node->left;
+		while (node->right != NIL)
+			node = node->right;
+		return node;
+	}
+
 
 	/*TREE BALANCING*/
 
-	node_pointer skew_(node_pointer root)
+	static node_pointer skew_(node_pointer root)
 	{
 		if (root->level && root->left->level == root->level) // red node to our left?
 			return rotate_right_(root);
@@ -106,23 +155,23 @@ class AA_tree
 			return root; // else no change neeeded
 	}
 
-	node_pointer rotate_right_(node_pointer oldroot_)
+	static node_pointer rotate_right_(node_pointer oldroot)
 	{
 		// Right rotation
-		node_pointer newroot_ = oldroot_->left;
-		oldroot_->left        = newroot_->right;
-		newroot_->right       = oldroot_;
+		node_pointer newroot = oldroot->left;
 
-		// Updating parent information
-		newroot_->parent = oldroot_->parent;
-		newroot_->right->parent = newroot_;
-		newroot_->left->parent = newroot_;
+		newroot->parent = oldroot->parent; // Parenting
+		oldroot->parent = newroot;
+		newroot->right->parent = oldroot;
+
+		oldroot->left        = newroot->right;
+		newroot->right       = oldroot;
 
 		// return pointer of the node that came out on top
-		return newroot_;
+		return newroot;
 	}
 
-	node_pointer split_(node_pointer root)
+	static node_pointer split_(node_pointer root)
 	{
 		if (root->level && root->right->right->level == root->level) // 2 red nodes on our right ?
 			return rotate_left_(root);
@@ -130,26 +179,26 @@ class AA_tree
 			return root; // else no change needed
 	}
 
-	node_pointer rotate_left_(node_pointer oldroot_)
+	static node_pointer rotate_left_(node_pointer oldroot)
 	{
 		//Left rotation
-		node_pointer newroot_ = oldroot_->right;
-		oldroot_->right       = newroot_->left;
-		newroot_->left        = oldroot_;
+		node_pointer newroot = oldroot->right;
 
-		// Updating parent information
-		newroot_->parent = oldroot_->parent;
-		newroot_->right->parent = newroot_;
-		newroot_->left->parent = newroot_;
+		newroot->parent = oldroot->parent; // Parenting
+		oldroot->parent = newroot;
+		newroot->left->parent = oldroot;
 
-		// promote newroot_ to next higher level
-		newroot_->level += 1;
+		oldroot->right       = newroot->left;
+		newroot->left        = oldroot;
+
+		// promote newroot to next higher level
+		newroot->level += 1;
 
 		// return pointer of the node that came out on top
-		return newroot_;
+		return newroot;
 	}
 
-	void update_level_(node_pointer node)
+	static void update_level_(node_pointer node)
 	{
 		int ideal_level = 1 + std::min(node->left->level, node->right->level);
 		// node's level above ideal ?
@@ -162,7 +211,7 @@ class AA_tree
 	}
 
 	// Update node's level and then three skews and two splits do the trick
-	node_pointer fixup_after_delete_(node_pointer node)
+	static node_pointer fixup_after_delete_(node_pointer node)
 	{
 		update_level_(node);
 		node               = skew_(node);
@@ -171,28 +220,6 @@ class AA_tree
 		node               = split_(node);
 		node->right        = split_(node->right);
 		return (node);
-	}
-
-	node_pointer in_order_successor_(node_pointer node)
-	{
-		if (node->right == NIL)
-			return node;
-		else
-			node = node->right;
-		while (node->left != NIL)
-			node = node->left;
-		return node;
-	}
-
-	node_pointer in_order_predecessor_(node_pointer node)
-	{
-		if (node->left == NIL)
-			return node;
-		else
-			node = node->left;
-		while (node->right != NIL)
-			node = node->right;
-		return node;
 	}
 
 	/*INSERTION & DELETION*/
@@ -286,6 +313,7 @@ class AA_tree
 	void insert(Key k, Value v)
 	{
 		root_ = insert_(k, v, root_, root_);
+		root_->parent = root_;
 	}
 
 	void remove(Key k)
@@ -293,7 +321,7 @@ class AA_tree
 		root_ = remove_(k, root_);
 	}
 
-	/* ITERATOR */
+	/* NESTED ITERATOR CLASSES */
 
 	class const_iterator
 	{
@@ -302,42 +330,26 @@ class AA_tree
 		node_pointer             root_;
 		node_pointer             current_;
 
-		/* HELPERS */
-
-		node_pointer leftmost_(node_pointer node) const
-		{
-			while (node->left != NIL)
-				node = node->left;
-			return node;
-		}
-
-		node_pointer rightmost_(node_pointer node) const
-		{
-			while (node->right != NIL)
-				node = node->right;
-			return node;
-		}
-
 	  public:
-
 		/* Constructor */ const_iterator(node_pointer root, node_pointer current = NULL)
 			: root_(root), current_(current)
 		{ }
 
 		/* Copy Constructor */ const_iterator(const_iterator const &other)
-			: root_(other.current_), current_(other.current_)
+			: root_(other.root_), current_(other.current_)
 		{ }
 
 		const_iterator &operator=(const_iterator const &rhs)
 		{
-			current_ = rhs.current_;
 			root_ = rhs.root_;
+			current_ = rhs.current_;
 			return *this;
 		}
 
 		// const_iterator will cycle forward passing through an end's marker
 		const_iterator &operator++()
 		{
+			root_ = update_root(root_);
 			if (root_ == NIL) // Tree empty ?
 				current_ = NULL;
 			else if (current_ == NULL) 
@@ -350,35 +362,39 @@ class AA_tree
 			else if (current_ == current_->parent->left) // If it is its parent's left child
 				current_ = current_->parent; // ... it becomes its parent
 			// Then it's its parent's right child
-			while (current_ == current_->parent->right) // Go up the succession of right children
-				current_ = current_->parent;
-			if (current_ == current_->parent->left) // if it is its parent's left child
-				current_ = current_->parent; // ... it becomes its parent
-			else
-				current_ = NULL; // ..else NULL, end is reached
+			else 
+			{
+				while (current_ == current_->parent->right) // Go up the succession of right children
+					current_ = current_->parent;
+				if (current_ == current_->parent->left) // if it is its parent's left child
+					current_ = current_->parent; // ... it becomes its parent
+				else
+					current_ = NULL; // ..else NULL, end is reached
+			}
 			return *this;
 		}
 
 		// const_iterator will cycle backward passing through an end's marker
 		const_iterator &operator--()
 		{
-			if (root_ == NIL)
+			root_ = update_root(root_);
+			if (root_ == NIL) // Tree empty ?
 				current_ = NULL;
-			else if (current_ == NULL)
+			else if (current_ == NULL) // Reached the end ?
 				current_ = rightmost_(root_);
-			// If tree was empty but stuff got in since last call
 			else if (current_->left != NIL)
 				current_ = rightmost_(current_->left);
-			else if (current_->parent && current_ == current_->parent->right)
+			else if (current_ == current_->parent->right)
 				current_ = current_->parent;
-			else if (current_->parent)
+			else 
 			{
-				while (current_->parent && current_ == current_->parent->left)
+				while (current_ == current_->parent->left) // Go up the succession of left children
 					current_ = current_->parent;
-				current_ = current_->parent && current_ == current_->parent->right ? current_->parent : NULL;
+				if (current_ == current_->parent->right) // if it is its parent's right child
+					current_ = current_->parent; // ... it becomes its parent
+				else
+					current_ = NULL; // ..else NULL, end is reached
 			}
-			else
-				current_ = NULL;
 			return *this;
 		}
 
@@ -417,38 +433,12 @@ class AA_tree
 		}
 	};
 
-	const_iterator begin() const
-	{
-		return ++const_iterator(root_);
-	}
-
-	const_iterator end() const
-	{
-		return const_iterator(root_);
-	}
-
 	class iterator
 	{
 	  protected:
 		/* STATE */
 		node_pointer             root_;
 		node_pointer             current_;
-
-		/* HELPERS */
-
-		node_pointer leftmost_(node_pointer node) const
-		{
-			while (node->left != NIL)
-				node = node->left;
-			return node;
-		}
-
-		node_pointer rightmost_(node_pointer node) const
-		{
-			while (node->right != NIL)
-				node = node->right;
-			return node;
-		}
 
 	  public:
 
@@ -457,7 +447,7 @@ class AA_tree
 		{ }
 
 		/* Copy Constructor */ iterator(iterator const &other)
-			: root_(other.current_), current_(other.current_)
+			: root_(other.root_), current_(other.current_)
 		{ }
 
 		/* Conversion */ operator const_iterator()
@@ -467,14 +457,15 @@ class AA_tree
 
 		iterator &operator=(iterator const &rhs)
 		{
-			current_ = rhs.current_;
 			root_ = rhs.root_;
+			current_ = rhs.current_;
 			return *this;
 		}
 
-		// Iterator will cycle forward passing through an end's marker
+		// iterator will cycle forward passing through an end's marker
 		iterator &operator++()
 		{
+			root_ = update_root(root_);
 			if (root_ == NIL) // Tree empty ?
 				current_ = NULL;
 			else if (current_ == NULL) 
@@ -487,35 +478,39 @@ class AA_tree
 			else if (current_ == current_->parent->left) // If it is its parent's left child
 				current_ = current_->parent; // ... it becomes its parent
 			// Then it's its parent's right child
-			while (current_ == current_->parent->right) // Go up the succession of right children
-				current_ = current_->parent;
-			if (current_ == current_->parent->left) // if it is its parent's left child
-				current_ = current_->parent; // ... it becomes its parent
-			else
-				current_ = NULL; // ..else NULL, end is reached
+			else 
+			{
+				while (current_ == current_->parent->right) // Go up the succession of right children
+					current_ = current_->parent;
+				if (current_ == current_->parent->left) // if it is its parent's left child
+					current_ = current_->parent; // ... it becomes its parent
+				else
+					current_ = NULL; // ..else NULL, end is reached
+			}
 			return *this;
 		}
 
-		// Iterator will cycle backward passing through an end's marker
+		// iterator will cycle backward passing through an end's marker
 		iterator &operator--()
 		{
-			if (root_ == NIL)
+			root_ = update_root(root_);
+			if (root_ == NIL) // Tree empty ?
 				current_ = NULL;
-			else if (current_ == NULL)
+			else if (current_ == NULL) // Reached the end ?
 				current_ = rightmost_(root_);
-			// If tree was empty but stuff got in since last call
 			else if (current_->left != NIL)
 				current_ = rightmost_(current_->left);
-			else if (current_->parent && current_ == current_->parent->right)
+			else if (current_ == current_->parent->right)
 				current_ = current_->parent;
-			else if (current_->parent)
+			else 
 			{
-				while (current_->parent && current_ == current_->parent->left)
+				while (current_ == current_->parent->left) // Go up the succession of left children
 					current_ = current_->parent;
-				current_ = current_->parent && current_ == current_->parent->right ? current_->parent : NULL;
+				if (current_ == current_->parent->right) // if it is its parent's right child
+					current_ = current_->parent; // ... it becomes its parent
+				else
+					current_ = NULL; // ..else NULL, end is reached
 			}
-			else
-				current_ = NULL;
 			return *this;
 		}
 
@@ -554,6 +549,16 @@ class AA_tree
 		}
 	};
 
+	const_iterator begin() const
+	{
+		return ++const_iterator(root_);
+	}
+
+	const_iterator end() const
+	{
+		return const_iterator(root_);
+	}
+
 	iterator begin()
 	{
 		return ++iterator(root_);
@@ -564,14 +569,13 @@ class AA_tree
 		return iterator(root_);
 	}
 
-
 	/* DEBUG */
 
 	void print_node(std::stringstream &ss, node_pointer node)
 	{
 		if (node != NIL)
 		{
-			ss << node->key << " [label=< <b>" << node->key << "</b><br/> <sub>" << node->level << "</sub>>]\n\t";
+			ss << node->key << " [label=< <b>" << node->key << "</b><br/> <sub>" << node->parent->key << "</sub>>]\n\t";
 			if (node->left != NIL)
 			{
 				if (node->left->level == node->level)
@@ -615,12 +619,10 @@ class AA_tree
 		file << ss.str();
 		file << "\n}";
 	}
-
+#undef DEFAULT_FILENAME
 
 #undef NIL
 }; // class AA_tree
-#undef DEFAULT_FILENAME
-
 } // namespace ft
 
 #endif /* AA_TREE_HPP */
