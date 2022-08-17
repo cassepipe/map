@@ -46,14 +46,13 @@ void printInsertionStatus(It it, bool success)
     std::cout << "Insertion of " << it->first << (success ? " succeeded\n" : " failed\n");
 }
 
-using ft::AA_tree;
 int main()
 {
-	if (1)
-	{
 		using ft::AA_tree;
+#ifdef ONE
+	{
 
-		AA_tree<int, string> tree;
+		//AA_tree<int, string> tree;
 
 		//tree.insert(1, string("one"));
 		//tree.insert(2, string("two"));
@@ -85,9 +84,9 @@ int main()
 		//tree.insert(4, "four");
 		
 		tree.print_dot();
-		
 	}
-	if (0)
+#endif
+#ifdef B
 	{
 		using ft::AA_tree;
 
@@ -102,41 +101,42 @@ int main()
 
 		tree.print_dot();
 	}
-	if (0)
+#endif
+#define C
+#ifdef C
 	{
-		map<int, int> my_map;
 
-		my_map.insert(std::make_pair(1, 1));
-		my_map.insert(std::make_pair(2, 2));
-		my_map.insert(std::make_pair(3, 3));
+		using ft::AA_tree;
 
-		map<int, int >::const_iterator it = my_map.begin();
-		--it;
+		AA_tree<int, int> tree;
 
-		map<int, int >::reverse_iterator rit = my_map.rbegin(); 
-		for(; rit != my_map.rend(); ++rit);
-	}
-	if (0)
-	{
-		map<int, int> my_map;
+		tree.insert(1,1);
+		tree.insert(2,2);
+		tree.insert(3,3);
+		tree.insert(4,4);
+		tree.insert(0,0);
+		tree.insert(7,7);
+		tree.insert(5,5);
+		tree.insert(8,8);
+		tree.insert(6,6);
+		tree.insert(9,9);
 
-		my_map.insert(std::make_pair(1, 1));
-		my_map.insert(std::make_pair(2, 2));
-		my_map.insert(std::make_pair(3, 3));
+		tree.print_dot();
 
-		for(map<int, int >::const_iterator it = my_map.begin(); it != my_map.end(); ++it)
+		for(AA_tree<int, int >::iterator it = tree.begin(); it != tree.end(); ++it)
 		{
-			std::cout << it->first << " " << it->second <<  "\n";
+			std::cout << *it <<  "\n";
 		}
 
-		for(map<int, int >::reverse_iterator it = my_map.rbegin(); it != my_map.rend(); ++it)
+		for(AA_tree<int, int>::const_iterator it = tree.begin(); it != tree.end(); ++it)
 		{
-			std::cout << it->first << " " << it->second <<  "\n";
+			std::cout << *it <<  "\n";
 		}
-
 	}
-	if (0)
+#endif
+#ifdef D
 	{
+		// Checking value replacement
 		using ft::AA_tree;
 
 		AA_tree<int, NotDefaultConstructiblePerson> tree;
@@ -145,6 +145,7 @@ int main()
 		tree.insert(1, NotDefaultConstructiblePerson(23, "Thomas"));
 		tree.print_dot();
 	}
+#endif
 
 	return 0;
 }

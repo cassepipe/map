@@ -102,11 +102,11 @@ class AA_tree
 
 	static node_pointer update_root(node_pointer root)
 	{
-		// If the root is its own parent use instead :
-		//while (root != root->parent)
-		
 		// If the the parent of the root is NIL
-		while (root != NIL)
+		// while (root != NIL)
+		
+		// If the root is its own parent use instead :
+		while (root != root->parent)
 		    root = root->parent;
 		return root;
 	}
@@ -316,8 +316,8 @@ class AA_tree
 	void insert(Key k, Value v)
 	{
 		root_ = insert_(k, v, NIL, root_);
-		// Need this line if we want root to be its own parent
-		//root_->parent = root_;
+		// Need this line if we want root to be its own parent, need to change update_root then
+		root_->parent = root_;
 	}
 
 	void remove(Key k)
