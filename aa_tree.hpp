@@ -10,6 +10,10 @@
 #include <stdexcept>
 #include <utility>
 
+
+#include "iterator_traits.hpp"
+#include "reverse_iterator.hpp"
+
 namespace ft
 {
 
@@ -21,24 +25,32 @@ class AA_tree
 	struct AA_base_node;
 	struct AA_node;
 
-  public:
-	class iterator;
-	class const_iterator;
+	template<typename K, typename V>
+	class aat_iterator;
 
-	typedef Key            key_type;
-	typedef Value          mapped_type;
-	typedef AA_node        node_type;
-	typedef AA_node *      node_pointer;
-	typedef std::size_t    size_type;
+  public:
+
+	typedef Key                                                        key_type;
+	typedef Value                                                   mapped_type;
+	typedef AA_node                                                   node_type;
+	typedef AA_node *                                              node_pointer;
+	typedef std::size_t                                               size_type;
+	typedef aat_iterator<const Key, Value>                             iterator;
+	typedef aat_iterator<const Key, const Value>                 const_iterator;
+	typedef ft::reverse_iterator<iterator>                     reverse_iterator;
+	typedef ft::reverse_iterator<const_iterator>         const_reverse_iterator;
 
 	// the template keyword is only here so that the < can be correctly parsed
-	typedef typename Alloc::template rebind<node_type>::other node_allocator_type;
+	typedef typename
+	Alloc::template rebind<node_type>::other                node_allocator_type;
+
 	// Were we able to use c++11, we would have used std::allocator_traits like this
-	// typedef typename std::allocator_traits<Alloc>::template rebind_alloc<node_type>		node_allocator_type;
+	// typedef typename
+	// std::allocator_traits<Alloc>::template rebind_alloc<node_type>          node_allocator_type;
 	
   protected:
 
-	/* DATA */
+	/* STATE */
 	node_pointer        root_;
 	size_type           size_;
 	node_allocator_type node_alloc_;
@@ -327,118 +339,19 @@ class AA_tree
 
 	/* NESTED ITERATOR CLASSES */
 
-	class const_iterator
+  protected:
+	template <typename K, typename V>
+	class aat_iterator
 	{
-	  protected:
-		/* STATE */
-		node_pointer             root_;
-		node_pointer             current_;
-
 	  public:
-		/* Constructor */ const_iterator(node_pointer root, node_pointer current = NULL)
-			: root_(root), current_(current)
-		{ }
+		typedef std::pair<K, V>                                      value_type;
+		typedef value_type&                                           reference;
+		typedef value_type*                                             pointer;
+		typedef bidirectional_iterator_tag                    iterator_category;
+		typedef std::ptrdiff_t                                  difference_type;
+		typedef
+		AA_tree<Key, Value, KeyCmpFn, Alloc>::node_pointer         node_pointer;
 
-		/* Copy Constructor */ const_iterator(const_iterator const &other)
-			: root_(other.root_), current_(other.current_)
-		{ }
-
-		const_iterator &operator=(const_iterator const &rhs)
-		{
-			root_ = rhs.root_;
-			current_ = rhs.current_;
-			return *this;
-		}
-
-		// const_iterator will cycle forward passing through an end's marker
-		const_iterator &operator++()
-		{
-			root_ = update_root(root_);
-			if (root_ == NIL) // Tree empty ?
-				current_ = NULL;
-			else if (current_ == NULL) 
-				current_ = leftmost_(root_);
-			// If tree was empty but stuff got in since last call
-			 // If has successor...
-			else if (current_->right != NIL)
-				current_ = leftmost_(current_->right); // ... goes to successor
-			// Else if it has no successor under itself
-			else if (current_ == current_->parent->left) // If it is its parent's left child
-				current_ = current_->parent; // ... it becomes its parent
-			// Then it's its parent's right child
-			else 
-			{
-				while (current_ == current_->parent->right) // Go up the succession of right children
-					current_ = current_->parent;
-				if (current_ == current_->parent->left) // if it is its parent's left child
-					current_ = current_->parent; // ... it becomes its parent
-				else
-					current_ = NULL; // ..else NULL, end is reached
-			}
-			return *this;
-		}
-
-		// const_iterator will cycle backward passing through an end's marker
-		const_iterator &operator--()
-		{
-			root_ = update_root(root_);
-			if (root_ == NIL) // Tree empty ?
-				current_ = NULL;
-			else if (current_ == NULL) // Reached the end ?
-				current_ = rightmost_(root_);
-			else if (current_->left != NIL)
-				current_ = rightmost_(current_->left);
-			else if (current_ == current_->parent->right)
-				current_ = current_->parent;
-			else 
-			{
-				while (current_ == current_->parent->left) // Go up the succession of left children
-					current_ = current_->parent;
-				if (current_ == current_->parent->right) // if it is its parent's right child
-					current_ = current_->parent; // ... it becomes its parent
-				else
-					current_ = NULL; // ..else NULL, end is reached
-			}
-			return *this;
-		}
-
-		const_iterator operator++(int)
-		{
-			const_iterator tmp = *this;
-			operator++();
-			return tmp;
-		}
-
-		const_iterator operator--(int)
-		{
-			const_iterator tmp = *this;
-			operator--();
-			return tmp;
-		}
-
-		const mapped_type * operator->() const
-		{
-			return &(current_->value);
-		}
-
-		mapped_type operator*() const
-		{
-			return current_->value;
-		}
-
-		bool operator==(const_iterator const &rhs) const
-		{
-			return current_ == rhs.current_;
-		}
-
-		bool operator!=(const_iterator const &rhs) const
-		{
-			return current_ != rhs.current_;
-		}
-	};
-
-	class iterator
-	{
 	  protected:
 		/* STATE */
 		node_pointer             root_;
@@ -446,20 +359,20 @@ class AA_tree
 
 	  public:
 
-		/* Constructor */ iterator(node_pointer root, node_pointer current = NULL)
+		/* Constructor */ aat_iterator(node_pointer root, node_pointer current = NULL)
 			: root_(root), current_(current)
 		{ }
 
-		/* Copy Constructor */ iterator(iterator const &other)
+		/* Copy Constructor */ aat_iterator(aat_iterator const &other)
 			: root_(other.root_), current_(other.current_)
 		{ }
 
-		/* Conversion */ operator const_iterator()
+		/* Conversion */ operator AA_tree<Key, Value, KeyCmpFn, Alloc>::const_iterator()
 		{
-			return const_iterator(root_, current_);
+			return AA_tree<Key, Value, KeyCmpFn, Alloc>::const_iterator(root_, current_);
 		}
 
-		iterator &operator=(iterator const &rhs)
+		aat_iterator &operator=(iterator const &rhs)
 		{
 			root_ = rhs.root_;
 			current_ = rhs.current_;
@@ -467,7 +380,7 @@ class AA_tree
 		}
 
 		// iterator will cycle forward passing through an end's marker
-		iterator &operator++()
+		aat_iterator &operator++()
 		{
 			root_ = update_root(root_);
 			if (root_ == NIL) // Tree empty ?
@@ -495,7 +408,7 @@ class AA_tree
 		}
 
 		// iterator will cycle backward passing through an end's marker
-		iterator &operator--()
+		aat_iterator &operator--()
 		{
 			root_ = update_root(root_);
 			if (root_ == NIL) // Tree empty ?
@@ -518,40 +431,39 @@ class AA_tree
 			return *this;
 		}
 
-		iterator operator++(int)
+		aat_iterator operator++(int)
 		{
-			iterator tmp = *this;
+			aat_iterator tmp = *this;
 			operator++();
 			return tmp;
 		}
 
-		iterator operator--(int)
+		aat_iterator operator--(int)
 		{
-			iterator tmp = *this;
+			aat_iterator tmp = *this;
 			operator--();
 			return tmp;
 		}
 
-		mapped_type * operator->() const
-		{
-			return &(current_->value);
-		}
+		pointer operator->() const { return &(current_->value); }
 
-		mapped_type operator*() const
-		{
-			return current_->value;
-		}
+		reference operator*() const { return current_->value; }
 
-		bool operator==(iterator const &rhs) const
-		{
-			return current_ == rhs.current_;
-		}
+		bool operator==(aat_iterator const &rhs) const { return current_ == rhs.current_; }
 
-		bool operator!=(iterator const &rhs) const
-		{
-			return current_ != rhs.current_;
-		}
+		bool operator!=(aat_iterator const &rhs) const { return current_ != rhs.current_; }
 	};
+
+  public:
+	iterator begin()
+	{
+		return ++iterator(root_);
+	}
+
+	iterator end()
+	{
+		return iterator(root_);
+	}
 
 	const_iterator begin() const
 	{
@@ -563,15 +475,26 @@ class AA_tree
 		return const_iterator(root_);
 	}
 
-	iterator begin()
+	reverse_iterator rbegin()
 	{
-		return ++iterator(root_);
+		reverse_iterator(this->end());
 	}
 
-	iterator end()
+	reverse_iterator rend()
 	{
-		return iterator(root_);
+		reverse_iterator(this->begin());
 	}
+
+	const_reverse_iterator rbegin() const
+	{
+		const_reverse_iterator(this->end());
+	}
+
+	const_reverse_iterator rend() const
+	{
+		const_reverse_iterator(this->begin());
+	}
+
 
 	/* DEBUG */
 
