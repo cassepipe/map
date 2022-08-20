@@ -75,7 +75,6 @@ template <typename Iterator>
 
 	// Compiler will generate copy ctor and operator=()
 	
-	
 	/// MISCELLEANOUS
 	
 	iterator_type base() const
@@ -94,7 +93,6 @@ template <typename Iterator>
 
 	pointer operator->() const
 	{
-
 		return &(operator*());
 	}
 

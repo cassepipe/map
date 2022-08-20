@@ -68,17 +68,17 @@ int main()
 
 		//tree.print_dot();
 		//
-		//tree.remove(4);
-		//tree.remove(3);
-		//tree.remove(0);
-		//tree.remove(2);
+		//tree.erase(4);
+		//tree.erase(3);
+		//tree.erase(0);
+		//tree.erase(2);
 
 		//tree.insert(20, string("twenty"));
 
-		//tree.remove(0);
-		//tree.remove(0);
+		//tree.erase(0);
+		//tree.erase(0);
 
-		//tree.remove(4);
+		//tree.erase(4);
 
 		//tree.insert(0, "zero");
 		//tree.insert(4, "four");
@@ -110,33 +110,33 @@ int main()
 
 		AA_tree<int, int> tree;
 
-		tree.insert(1,1);
-		tree.insert(2,2);
+		tree.insert(std::make_pair(1, 1));
+		tree.insert(std::make_pair(2, 2));
 
-		tree.remove(0);
+		tree.erase(0);
 
-		tree.insert(3,3);
-		tree.insert(4,4);
-		tree.insert(0,0);
-		tree.insert(7,7);
+		tree.insert(std::make_pair(3, 3));
+		tree.insert(std::make_pair(4, 4));
+		tree.insert(std::make_pair(0, 0));
+		tree.insert(std::make_pair(7, 7));
 
-		tree.remove(4);
+		tree.erase(4);
 
-		tree.insert(5,5);
+		tree.insert(std::make_pair(5, 5));
 
-		tree.remove(3);
+		tree.erase(3);
 
-		tree.insert(8,8);
+		tree.insert(std::make_pair(8, 8));
 
-		tree.remove(0);
+		tree.erase(0);
 
-		tree.insert(6,6);
+		tree.insert(std::make_pair(6, 6));
 
-		tree.remove(7);
+		tree.erase(7);
 
-		tree.insert(9,9);
+		tree.insert(std::make_pair(9, 9));
 
-		tree.remove(7);
+		tree.erase(7);
 
 
 		tree.print_dot();

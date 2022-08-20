@@ -10,7 +10,6 @@
 #include <stdexcept>
 #include <utility>
 
-
 #include "iterator_traits.hpp"
 #include "reverse_iterator.hpp"
 #include "pair.hpp"
@@ -33,15 +32,17 @@ class AA_tree
 
 	typedef Key                                                        key_type;
 	typedef Value                                                   mapped_type;
-	typedef std::pair<const Key, Value>                               value_type;
+	typedef std::pair<const Key, Value>                              value_type;
 	typedef AA_node                                                   node_type;
 	typedef AA_node *                                              node_pointer;
+	typedef Alloc                                                allocator_type;
 	typedef std::size_t                                               size_type;
 	typedef aat_iterator<Value>   			                           iterator;
 	typedef aat_iterator<const Value>                            const_iterator;
 	typedef ft::reverse_iterator<iterator>                     reverse_iterator;
 	typedef ft::reverse_iterator<const_iterator>         const_reverse_iterator;
 
+  protected:
 	// the template keyword is only here so that the < can be correctly parsed
 	typedef typename
 	Alloc::template rebind<node_type>::other                node_allocator_type;
@@ -50,7 +51,6 @@ class AA_tree
 	// typedef typename
 	// std::allocator_traits<Alloc>::template rebind_alloc<node_type>          node_allocator_type;
 	
-  protected:
 
 	/* STATE */
 	node_pointer        root_;
@@ -158,7 +158,6 @@ class AA_tree
 		return node;
 	}
 
-
 	/*TREE BALANCING*/
 
 	static node_pointer skew_(node_pointer root)
@@ -238,7 +237,17 @@ class AA_tree
 
 	/*INSERTION & DELETION*/
 
-	node_pointer insert_(Key const& k, Value const& v, node_pointer parent, node_pointer current_node)
+	iterator insert_(Key const& k, Value const& v)
+	{
+		node_pointer ret = NULL;;
+
+		root_ = insert_(k, v, NIL, root_, ret);
+		// Need this line if we want root to be its own parent, need to change update_root then
+		root_->parent = root_;
+		return iterator(root_, ret);
+	}
+
+	node_pointer insert_(Key const& k, Value const& v, node_pointer parent, node_pointer current_node, node_pointer ret)
 	{
 		if (current_node == NIL) // fell out of the tree?
 		{
@@ -246,13 +255,17 @@ class AA_tree
 			// create a new leaf node
 			current_node = node_alloc_.allocate(1);
 			node_alloc_.construct(current_node, node_type(k, v, parent));
+			ret = current_node;
 		}
 		else if (compare_func_(k, current_node->key()))        // key is smaller?
-			current_node->left = insert_(k, v, current_node, current_node->left);   // ->insert left
+			current_node->left = insert_(k, v, current_node, current_node->left, ret);   // ->insert left
 		else if (compare_func_(current_node->key(), k))         // key is larger?
-			current_node->right = insert_(k, v, current_node, current_node->right); // ->insert right
+			current_node->right = insert_(k, v, current_node, current_node->right, ret); // ->insert right
 		else
+		{
 			current_node->value() = v;
+			ret = current_node;
+		}
 		return split_(skew_(current_node)); // restructure and return result
 	}
 
@@ -319,21 +332,142 @@ class AA_tree
 		this->clear();
 	}
 
+	AA_tree operator=(AA_tree const& rhs)
+	{
+		if (this != &rhs)
+		{
+			this->clear();
+			insert(rhs.begin(), rhs.last); // There must be a better way though
+		}
+	}
+
+	// MODIFIERS
+
 	void clear()
 	{
 		root_ = clear_(root_);
 	}
 
-	void insert(Key const& k, Value const& v)
+	ft::pair<iterator, bool> insert(value_type const& pair)
 	{
-		root_ = insert_(k, v, NIL, root_);
-		// Need this line if we want root to be its own parent, need to change update_root then
-		root_->parent = root_;
+		size_type size_before = size_;
+
+		if (size_before == size_)
+			return ft::make_pair(insert_(pair.first, pair.second), false);
+		else
+			return ft::make_pair(insert_(pair.first, pair.second), true);
 	}
 
-	void remove(Key const& k)
+	void insert(iterator first, iterator last)
 	{
+		for (; first != last; ++first)
+			insert(*first);
+	}
+
+	iterator insert(iterator hint, value_type const &new_val)
+	{
+		(void)hint;
+		return insert(new_val).first;
+	}
+
+	size_type erase(Key const& k)
+	{
+		size_type size_before = size_;
 		root_ = remove_(k, root_);
+		if (size_before == size_)
+			return 0;
+		return 0;
+	}
+
+	void erase( iterator it )
+	{
+		erase(*it->key());
+	}
+
+	void erase( iterator first, iterator last )
+	{
+		for (; first != last ; ++first)
+			erase(first);
+	}
+
+	void swap( AA_tree& other )
+	{
+		if (this != &other)
+		{
+			node_pointer tmp_root = root_;
+			size_type tmp_size = size_;
+
+			root_ = other.root_;
+			size_ = other.size_;
+
+			other.root_ = tmp_root;
+			other.size_ = tmp_size;
+		}
+	}
+
+	/* CAPACITY */
+
+	bool empty() const
+	{
+		if (size_ == 0)
+			return true;
+		else
+			return false;
+	}
+
+	size_type size() const
+	{
+		return size_;
+	}
+
+	size_type max_size() const
+	{
+		return node_alloc_.max_size();
+	}
+
+	/* LOOKUP */
+
+	size_type count( const Key& key ) const
+	{
+		if (find(key) == this->end())
+			return 0;
+		return 1;
+	}
+
+	iterator find( const Key& key )
+	{
+		AA_node* current = root_;
+
+		while (current != NIL)
+		{
+			bool searched_is_less = compare_func_(key, current->key());
+			bool searched_is_greater = compare_func_(current->key, key);
+			if (searched_is_less)
+				current = current->_left;
+			else if (searched_is_greater)
+				current = current->_right;
+			else
+				return this->end();
+		}
+		return iterator(current);
+	}
+
+	const_iterator find( const Key& key ) const
+	{
+		AA_node* current = root_;
+
+		while (current != NIL)
+		{
+			bool searched_is_less = compare_func_(key, current->key());
+			bool searched_is_greater = compare_func_(current->key, key);
+			if (searched_is_less)
+				current = current->_left;
+			else if (searched_is_greater)
+				current = current->_right;
+			else
+				return this->end();
+		}
+		return const_iterator(current);
 	}
 
 	/* NESTED ITERATOR CLASSES */
@@ -343,9 +477,8 @@ class AA_tree
 	class aat_iterator
 	{
 	  public:
-		//typedef std::pair<K, V>                                       value_type;
 		typedef typename
-		AA_tree<const Key, MaybeConstValue, KeyCmpFn, Alloc>::value_type             value_type;
+		AA_tree<const Key, MaybeConstValue, KeyCmpFn, Alloc>::value_type       value_type;
 		typedef value_type&                                           reference;
 		typedef value_type*                                             pointer;
 		typedef bidirectional_iterator_tag                    iterator_category;
@@ -495,7 +628,6 @@ class AA_tree
 	{
 		return const_reverse_iterator(this->begin());
 	}
-
 
 	/* DEBUG */
 
