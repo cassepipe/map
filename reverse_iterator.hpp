@@ -92,11 +92,10 @@ template <typename Iterator>
 		return *tmp;
 	}
 
-	pointer operator-> () const
+	pointer operator->() const
 	{
-		Iterator tmp = current_;
-		--tmp;
-		return tmp;
+
+		return &(operator*());
 	}
 
 	reference operator[] (difference_type i) const
