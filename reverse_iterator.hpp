@@ -25,7 +25,7 @@ template <typename Iterator>
 	class reverse_iterator
 {
   protected:
-	Iterator* current_;
+	Iterator current_;
 
   public:
 	/// EXPOSED TYPES
@@ -39,7 +39,7 @@ template <typename Iterator>
 	typedef typename iterator_traits<Iterator>::value_type                     value_type;
 	typedef typename iterator_traits<Iterator>::pointer                        pointer;
 	typedef typename iterator_traits<Iterator>::reference                      reference;
-	typedef typename iterator_traits<Iterator>::difference_type                 difference_type;
+	typedef typename iterator_traits<Iterator>::difference_type                difference_type;
 
 	/// CONSTRUCTORS
 
@@ -109,7 +109,7 @@ template <typename Iterator>
 	reverse_iterator& operator++ ()
 	{
 		--current_;
-		return &this;
+		return *this;
 	}
 
 	reverse_iterator& operator++ (int)

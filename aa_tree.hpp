@@ -13,6 +13,7 @@
 
 #include "iterator_traits.hpp"
 #include "reverse_iterator.hpp"
+#include "pair.hpp"
 
 namespace ft
 {
@@ -25,18 +26,19 @@ class AA_tree
 	struct AA_base_node;
 	struct AA_node;
 
-	template<typename K, typename V>
+	template<typename MaybeConstValue>
 	class aat_iterator;
 
   public:
 
 	typedef Key                                                        key_type;
 	typedef Value                                                   mapped_type;
+	typedef std::pair<const Key, Value>                               value_type;
 	typedef AA_node                                                   node_type;
 	typedef AA_node *                                              node_pointer;
 	typedef std::size_t                                               size_type;
-	typedef aat_iterator<const Key, Value>                             iterator;
-	typedef aat_iterator<const Key, const Value>                 const_iterator;
+	typedef aat_iterator<Value>   			                           iterator;
+	typedef aat_iterator<const Value>                            const_iterator;
 	typedef ft::reverse_iterator<iterator>                     reverse_iterator;
 	typedef ft::reverse_iterator<const_iterator>         const_reverse_iterator;
 
@@ -56,7 +58,7 @@ class AA_tree
 	node_allocator_type node_alloc_;
 	KeyCmpFn            compare_func_;
 
-	// Singleton for the nil node. Easy because benefits from the class templating
+	// Singleton for the NIL node 
 #define NIL get_nil_()
 	static AA_node *get_nil_()
 	{
@@ -67,7 +69,8 @@ class AA_tree
 	/* NESTED NODE CLASSES */
 
 	// This allows us to use our tree with non default-constructible Key and Value
-	// because using an having a Key and Vlaue as members would force the use of Key() and Value()
+	// because using an having a Key and Value as members would force the call
+	// of Key() and Value() at the time of creation of the NIL node
 	struct AA_base_node
 	{
 		AA_node *left;
@@ -93,21 +96,17 @@ class AA_tree
 
 	struct AA_node : public AA_base_node
 	{
-		Key      key;
-		Value    value;
+		std::pair<Key, Value> pair;
 		AA_node *parent;
-
-		/*Default ctor*/ AA_node() :
-			AA_base_node(NIL, NIL, 1),
-			key(Key()),
-			value(Value())
-		{ }
 
 		/*Constructor*/ AA_node(Key k, Value v, AA_node *p) :
 			AA_base_node(NIL, NIL, 1),
-			key(k),
-			value(v), parent(p)
+			pair(k, v),
+			parent(p)
 		{ }
+
+		typename std::pair<Key, Value>::first_type & key() { return pair.first; }
+		typename std::pair<Key, Value>::second_type & value() { return pair.second;}
 	};
 
 	/* HELPERS */
@@ -239,7 +238,7 @@ class AA_tree
 
 	/*INSERTION & DELETION*/
 
-	node_pointer insert_(Key k, Value v, node_pointer parent, node_pointer current_node)
+	node_pointer insert_(Key const& k, Value const& v, node_pointer parent, node_pointer current_node)
 	{
 		if (current_node == NIL) // fell out of the tree?
 		{
@@ -248,12 +247,12 @@ class AA_tree
 			current_node = node_alloc_.allocate(1);
 			node_alloc_.construct(current_node, node_type(k, v, parent));
 		}
-		else if (compare_func_(k, current_node->key))        // key is smaller?
+		else if (compare_func_(k, current_node->key()))        // key is smaller?
 			current_node->left = insert_(k, v, current_node, current_node->left);   // ->insert left
-		else if (compare_func_(current_node->key, k))         // key is larger?
+		else if (compare_func_(current_node->key(), k))         // key is larger?
 			current_node->right = insert_(k, v, current_node, current_node->right); // ->insert right
 		else
-			current_node->value = v;
+			current_node->value() = v;
 		return split_(skew_(current_node)); // restructure and return result
 	}
 
@@ -262,9 +261,9 @@ class AA_tree
 	{
 		if (node == NIL) // Fell out of tree, key does not exist
 			return node; // No-op
-		else if (compare_func_(k, node->key))
+		else if (compare_func_(k, node->key()))
 			node->left = remove_(k, node->left); // Look in left subtree
-		else if (compare_func_(node->key, k))
+		else if (compare_func_(node->key(), k))
 			node->right = remove_(k, node->right); // Look in right subtree
 		else                                       // Found it !
 		{
@@ -277,16 +276,16 @@ class AA_tree
 			}
 			else if (node->left == NIL) // No left child ? Means it is a black leaf node. Replace with its red child
 			{
-				node->key   = node->right->key;
-				node->value = node->right->value;
-				node->right = remove_(node->right->key, node->right);
+				node->key()   = node->right->key();
+				node->value() = node->right->value();
+				node->right   = remove_(node->right->key(), node->right);
 			}
 			else // Find succesor, copy its values and remove successor instead
 			{
-				node_pointer successor = in_order_successor_(node);
-				node->key              = successor->key;
-				node->value            = successor->value;
-				node->right            = remove_(successor->key, node->right);
+				node_pointer successor   = in_order_successor_(node);
+				node->key()              = successor->key();
+				node->value()            = successor->value();
+				node->right              = remove_(successor->key(), node->right);
 			}
 		}
 		return fixup_after_delete_(node);
@@ -325,14 +324,14 @@ class AA_tree
 		root_ = clear_(root_);
 	}
 
-	void insert(Key k, Value v)
+	void insert(Key const& k, Value const& v)
 	{
 		root_ = insert_(k, v, NIL, root_);
 		// Need this line if we want root to be its own parent, need to change update_root then
 		root_->parent = root_;
 	}
 
-	void remove(Key k)
+	void remove(Key const& k)
 	{
 		root_ = remove_(k, root_);
 	}
@@ -340,11 +339,13 @@ class AA_tree
 	/* NESTED ITERATOR CLASSES */
 
   protected:
-	template <typename K, typename V>
+	template <typename MaybeConstValue>
 	class aat_iterator
 	{
 	  public:
-		typedef std::pair<K, V>                                      value_type;
+		//typedef std::pair<K, V>                                       value_type;
+		typedef typename
+		AA_tree<const Key, MaybeConstValue, KeyCmpFn, Alloc>::value_type             value_type;
 		typedef value_type&                                           reference;
 		typedef value_type*                                             pointer;
 		typedef bidirectional_iterator_tag                    iterator_category;
@@ -378,6 +379,14 @@ class AA_tree
 			current_ = rhs.current_;
 			return *this;
 		}
+		pointer operator->() const { return &(this->operator*()); }
+
+		reference operator*() const { return reinterpret_cast<reference>(current_->pair); }
+		//reference operator*() const { return current_->pair; }
+
+		bool operator==(aat_iterator const &rhs) const { return current_ == rhs.current_; }
+
+		bool operator!=(aat_iterator const &rhs) const { return current_ != rhs.current_; }
 
 		// iterator will cycle forward passing through an end's marker
 		aat_iterator &operator++()
@@ -431,27 +440,19 @@ class AA_tree
 			return *this;
 		}
 
-		aat_iterator operator++(int)
+		aat_iterator & operator++(int)
 		{
 			aat_iterator tmp = *this;
 			operator++();
 			return tmp;
 		}
 
-		aat_iterator operator--(int)
+		aat_iterator & operator--(int)
 		{
 			aat_iterator tmp = *this;
 			operator--();
 			return tmp;
 		}
-
-		pointer operator->() const { return &(current_->value); }
-
-		reference operator*() const { return current_->value; }
-
-		bool operator==(aat_iterator const &rhs) const { return current_ == rhs.current_; }
-
-		bool operator!=(aat_iterator const &rhs) const { return current_ != rhs.current_; }
 	};
 
   public:
@@ -477,22 +478,22 @@ class AA_tree
 
 	reverse_iterator rbegin()
 	{
-		reverse_iterator(this->end());
+		return reverse_iterator(this->end());
 	}
 
 	reverse_iterator rend()
 	{
-		reverse_iterator(this->begin());
+		return reverse_iterator(this->begin());
 	}
 
 	const_reverse_iterator rbegin() const
 	{
-		const_reverse_iterator(this->end());
+		return const_reverse_iterator(this->end());
 	}
 
 	const_reverse_iterator rend() const
 	{
-		const_reverse_iterator(this->begin());
+		return const_reverse_iterator(this->begin());
 	}
 
 
@@ -502,25 +503,25 @@ class AA_tree
 	{
 		if (node != NIL)
 		{
-			ss << node->key << " [label=< <b>" << node->key << "</b><br/> <sub>" << node->parent->key << "</sub>>]\n\t";
+			ss << node->key() << " [label=< <b>" << node->key() << "</b><br/> <sub>" << node->parent->key() << "</sub>>]\n\t";
 			if (node->left != NIL)
 			{
 				if (node->left->level == node->level)
 				{
-					ss << "{rank=same; " << node->key << "; " << node->left->key << "}\n\t";
-					ss << node->left->key << " [color=red]\n\t";
+					ss << "{rank=same; " << node->key() << "; " << node->left->key() << "}\n\t";
+					ss << node->left->key() << " [color=red]\n\t";
 				}
-				ss << node->key << " -> " << node->left->key << "\n\t";
+				ss << node->key() << " -> " << node->left->key() << "\n\t";
 				print_node(ss, node->left);
 			}
 			if (node->right != NIL)
 			{
 				if (node->right->level == node->level)
 				{
-					ss << "{rank=same; " << node->key << "; " << node->right->key << "}\n\t";
-					ss << node->right->key << " [color=red]\n\t";
+					ss << "{rank=same; " << node->key() << "; " << node->right->key() << "}\n\t";
+					ss << node->right->key() << " [color=red]\n\t";
 				}
-				ss << node->key << " -> " << node->right->key << "\n\t";
+				ss << node->key() << " -> " << node->right->key() << "\n\t";
 				print_node(ss, node->right);
 			}
 		}
@@ -551,5 +552,6 @@ class AA_tree
 #undef NIL
 }; // class AA_tree
 } // namespace ft
+ 
 
 #endif /* AA_TREE_HPP */

@@ -13,17 +13,39 @@ struct pair
 	T1 first;
 	T2 second;
 
-	/* Constructor */ pair() : first(), second()
+	/* Default Constructor */ pair() : first(), second()
 	{
 	}
 
-	pair(const T1& a, const T2& b) : first(a), second(b)
+	/* Init Constructor */ pair(const T1& a, const T2& b) : first(a), second(b)
 	{
 	}
 
-	pair(const pair& p) : first(p.first), second(p.second)
+	/* Copy Constructor */ pair(const pair& p) : first(p.first), second(p.second)
 	{
 	}
+
+	// Why is this allowed ? I don't know
+	template <typename U1, typename U2>
+	pair(const pair<U1, U2>& p) : first(p.first), second(p.second)
+	{
+	}
+
+	operator pair<const T1, const T2>()
+	{
+		return pair<const T1, const T2>(first, second);
+	} 
+
+	operator pair<const T1, T2>()
+	{
+		return pair<const T1,  T2>(first, second);
+	}
+
+	operator pair<T1, const T2>()
+	{
+		return pair<T1, const T2>(first, second);
+	}
+
 };
 
 template <typename T1, typename T2>

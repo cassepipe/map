@@ -7,6 +7,8 @@ SHELL			=	zsh
 NAME			=	a.out
 
 CXX				=	g++
+CXX				=	g++-12
+CXX				=	clang++
 
 INCLUDE_FLAGS	=
 

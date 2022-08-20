@@ -112,26 +112,52 @@ int main()
 
 		tree.insert(1,1);
 		tree.insert(2,2);
+
+		tree.remove(0);
+
 		tree.insert(3,3);
 		tree.insert(4,4);
 		tree.insert(0,0);
 		tree.insert(7,7);
+
+		tree.remove(4);
+
 		tree.insert(5,5);
+
+		tree.remove(3);
+
 		tree.insert(8,8);
+
+		tree.remove(0);
+
 		tree.insert(6,6);
+
+		tree.remove(7);
+
 		tree.insert(9,9);
+
+		tree.remove(7);
+
 
 		tree.print_dot();
 
 		for(AA_tree<int, int >::iterator it = tree.begin(); it != tree.end(); ++it)
 		{
-			std::cout << *it <<  "\n";
+			std::cout << it->first << it->second << "\n";
 		}
+		std::cout <<  "\n";
 
 		for(AA_tree<int, int>::const_iterator it = tree.begin(); it != tree.end(); ++it)
 		{
-			std::cout << *it <<  "\n";
+			std::cout << it->first << it->second << "\n";
 		}
+		std::cout <<  "\n";
+
+		for(AA_tree<int, int>::reverse_iterator it = tree.rbegin(); it != tree.rend(); ++it)
+		{
+			std::cout << it->first << it->second << "\n";
+		}
+		std::cout <<  "\n";
 	}
 #endif
 #ifdef D

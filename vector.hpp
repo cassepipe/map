@@ -41,13 +41,14 @@ class vector
 	// to remove the extra const. Note that vector<const T> still won't compile
 	// because of that leads std::allocator to having two functions with the
 	// same type signature. Writing our own const-friendly allocator would work
-	typedef vector_iterator<value_type>          iterator;
-	typedef vector_iterator<const value_type>    const_iterator;
+	typedef vector_iterator<value_type>              iterator;
+	typedef vector_iterator<const value_type>        const_iterator;
 	typedef ft::reverse_iterator<iterator>           reverse_iterator;
-	typedef ft::reverse_iterator<const_iterator> const_reverse_iterator; // Why do I need ft:: ?
+	typedef ft::reverse_iterator<const_iterator>     const_reverse_iterator; // Why do I need ft:: ?
 
 	// Why ptrdiff_t ? Because it is the signed equivalent of size_t.
 	// Good for pointer arithmetics
+	// TODO
 	typedef std::ptrdiff_t difference_type;
 	typedef std::size_t    size_type;
 
@@ -445,7 +446,7 @@ class vector
 		{
 			allocator_.destroy(&(*first));
 		}
-		return (++first);
+		return (first); 
 	}
 
 	void swap(vector& x)
