@@ -53,7 +53,7 @@ class vector
 	typedef std::size_t    size_type;
 
   protected:
-	/** DATA **/
+	/** STATE **/
 	// We need to store an allocator inside our instance in order to call its
 	// methods to, you know, allocate.
 	allocator_type allocator_;
@@ -97,48 +97,24 @@ class vector
 		allocator_.deallocate(data_, capacity_);
 	}
 
-	template <class InputIterator>
-	void assign_(InputIterator first, InputIterator last, allocator_type alloc)
-	{
-		// Clear, deallocate, allocate, copy data
-		destroy_data_();
-		deallocate_data_();
-		size_     = std::distance(first, last);
-		data_     = allocator_.allocate(size_ * sizeof(value_type));
-		capacity_ = size_;
-		for (size_type i = 0; i < size_; ++i)
-			allocator_.construct(&data_[i], first[i]);
-	}
-
-	void assign_(size_type n, const value_type& val, allocator_type alloc)
-	{
-		// Clear, deallocate, allocate, copy data
-		destroy_data_();
-		deallocate_data_();
-		size_     = n;
-		data_     = allocator_.allocate(size_ * sizeof(value_type));
-		capacity_ = size_;
-		;
-		for (size_type i = 0; i < size_; ++i)
-			allocator_.construct(&data_[i], val);
-	}
-
   public:
 	/** INTERFACE **/
 
 	// Default constructor.
 	// It is explicit because we won't allow anything to be converted implicity to an allocator
 	// to an allocator.
-	explicit vector(const allocator_type& alloc = allocator_type()) // Calls Alloc<T> default ctor
+	explicit vector(const allocator_type& alloc = allocator_type())
+		 : allocator_(alloc)
 	{
-		assign_(0, value_type(), alloc);
+		assign(0, value_type());
 	}
 
 	// Fill constructor
 	// If a call is like "vector<Obj>(5));" and passes then the value of Obj() is passed by default
 	explicit vector(size_type n, const value_type& val = value_type(), const allocator_type& alloc = allocator_type())
+		: allocator_(alloc)
 	{
-		assign_(n, val, alloc);
+		assign(n, val);
 	}
 
 	// Range constructor
@@ -148,8 +124,9 @@ class vector
 	template <class InputIterator>
 	vector(InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type(),
 	       typename enable_if<!is_integral<InputIterator>::value, void*>::type = 0)
+		: allocator_(alloc)
 	{
-		assign_(first, last, alloc);
+		assign(first, last);
 	}
 
 	// Copy constructor. Shall perform deep copy using operator=
@@ -362,13 +339,29 @@ class vector
 	void assign(InputIterator first, InputIterator last,
 	            typename enable_if<!is_integral<InputIterator>::value, int>::type = 0)
 	{
-		assign_(first, last, allocator_);
+		// Clear, deallocate, allocate, copy data
+		destroy_data_();
+		deallocate_data_();
+		size_     = std::distance(first, last);
+		data_     = allocator_.allocate(size_ * sizeof(value_type));
+		capacity_ = size_;
+		for (size_type i = 0; i < size_; ++i)
+			allocator_.construct(&data_[i], first[i]);
 	}
 
 	void assign(size_type n, const value_type& val)
 	{
-		assign_(n, allocator_);
+		// Clear, deallocate, allocate, copy data
+		destroy_data_();
+		deallocate_data_();
+		size_     = n;
+		data_     = allocator_.allocate(size_ * sizeof(value_type));
+		capacity_ = size_;
+		;
+		for (size_type i = 0; i < size_; ++i)
+			allocator_.construct(&data_[i], val);
 	}
+
 
 	void push_back(const value_type& val)
 	{

@@ -684,6 +684,5 @@ class AA_tree
 #undef NIL
 }; // class AA_tree
 } // namespace ft
- 
 
 #endif /* AA_TREE_HPP */
