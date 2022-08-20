@@ -78,7 +78,7 @@ template <typename Iterator>
 	
 	/// MISCELLEANOUS
 	
-	iterator_type base()
+	iterator_type base() const
 	{
 		return current_;
 	}
