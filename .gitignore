@@ -2,3 +2,4 @@ obj/
 tree*
 *.gch
 *.txt
+*_test
