@@ -1,3 +1,11 @@
+#define NAMESPACE ft
+
+#if NAMESPACE==ft
+# include "pair.hpp"
+# include "vector.hpp"
+# include "map.hpp"
+#endif
+
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -10,15 +18,16 @@
 #include <map>
 #include <utility>
 
-//#include "simple_aa_tree.hpp"
-#include "aa_tree.hpp"
+using NAMESPACE::vector;
+using NAMESPACE::map;
+using NAMESPACE::pair;
+using NAMESPACE::make_pair;
 
-using std::vector;
 using std::ostream;
-using std::map;
 using std::cout;
 using std::string;
 
+// Print a vector
 	template< typename T >
 std::ostream& operator<<(ostream& os, std::vector<T> vec)
 {
@@ -29,17 +38,17 @@ std::ostream& operator<<(ostream& os, std::vector<T> vec)
 	return os;
 }
 
-struct NotDefaultConstructiblePerson
+// Not Default Constructible
+struct NDCPerson
 {
 	int age;
 	string name;
 
-	/*Constructor*/ NotDefaultConstructiblePerson(int age, string name) :
+	/*Constructor*/ NDCPerson(int age, string name) :
 		age(age),
 		name(name) {}
 };
 
- 
 template<typename It>
 void printInsertionStatus(It it, bool success)
 {
@@ -48,130 +57,97 @@ void printInsertionStatus(It it, bool success)
 
 int main()
 {
-		using ft::AA_tree;
-#ifdef ONE
+	using ft::vector;
+	using ft::map;
+	using ft::pair;
+	using ft::make_pair;
 	{
 
-		//AA_tree<int, string> tree;
+		map<int, string> tree;
 
-		//tree.insert(1, string("one"));
-		//tree.insert(2, string("two"));
-		//tree.insert(30, string("thirty"));
-		tree.insert(3, string("three"));
-		tree.insert(4, string("four"));
-		tree.insert(0, string("zero"));
-		tree.insert(7, string("seven"));
-		tree.insert(5, "five");
-		//tree.insert(16, string("sixteen"));
-		tree.insert(8, string("eight"));
-		tree.insert(6, string("six"));
+		tree.insert( ft::make_pair( 1, string("one")) );
+		tree.insert( ft::make_pair( 2, string("two")));
+		tree.insert( ft::make_pair( 30, string("thirty")));
+		tree.insert( ft::make_pair( 3, string("three")));
+		tree.insert( ft::make_pair( 4, string("four")));
+		tree.insert( ft::make_pair( 0, string("zero")));
+		tree.insert( ft::make_pair( 7, string("seven")));
+		tree.insert( ft::make_pair( 5, string("five")));
+		tree.insert( ft::make_pair( 16, string("sixteen")));
+		tree.insert( ft::make_pair( 8, string("eight")));
+		tree.insert( ft::make_pair( 6, string("six")));
+		tree.insert( ft::make_pair( 6, string("six")));
 
-		//tree.print_dot();
-		//
-		//tree.erase(4);
-		//tree.erase(3);
-		//tree.erase(0);
-		//tree.erase(2);
-
-		//tree.insert(20, string("twenty"));
-
-		//tree.erase(0);
-		//tree.erase(0);
-
-		//tree.erase(4);
-
-		//tree.insert(0, "zero");
-		//tree.insert(4, "four");
-		
-		tree.print_dot();
+		tree.print_dot(1);
 	}
-#endif
-#ifdef B
+
 	{
-		using ft::AA_tree;
 
-		map<int, NotDefaultConstructiblePerson> my_map;
-		my_map.insert(std::make_pair(1, NotDefaultConstructiblePerson(42, "Jean")));
+		map<int, NDCPerson> my_map;
+		my_map.insert( make_pair(1, NDCPerson(42, "Jean") ));
 
-		AA_tree<int, NotDefaultConstructiblePerson> tree;
+		map<int, NDCPerson> tree;
 
-		tree.insert(1, NotDefaultConstructiblePerson(42, "Jean"));
-		tree.insert(2, NotDefaultConstructiblePerson(54, "Gérard"));
-		tree.insert(3, NotDefaultConstructiblePerson(21, "Thomas"));
+		tree.insert( make_pair( 1, NDCPerson(42, "Jean") ));
+		tree.insert( make_pair( 2, NDCPerson(54, "Gérard") ));
+		tree.insert( make_pair( 3, NDCPerson(21, "Thomas") ));
 
-		tree.print_dot();
+		tree.print_dot(2);
 	}
-#endif
-#define C
-#ifdef C
 	{
 
-		using ft::AA_tree;
+		map<int, int> tree;
 
-		AA_tree<int, int> tree;
-
-		tree.insert(std::make_pair(1, 1));
-		tree.insert(std::make_pair(2, 2));
-
+		tree.insert( make_pair(1, 1) );
+		tree.insert( make_pair(2, 2) );
 		tree.erase(0);
-
-		tree.insert(std::make_pair(3, 3));
-		tree.insert(std::make_pair(4, 4));
-		tree.insert(std::make_pair(0, 0));
-		tree.insert(std::make_pair(7, 7));
-
+		tree.insert( make_pair(3, 3) );
+		tree.insert( make_pair(4, 4) );
+		tree.insert( make_pair(0, 0) );
+		tree.insert( make_pair(7, 7) );
 		tree.erase(4);
-
-		tree.insert(std::make_pair(5, 5));
-
+		tree.insert( make_pair(5, 5) );
 		tree.erase(3);
-
-		tree.insert(std::make_pair(8, 8));
-
+		tree.insert( make_pair(8, 8) );
 		tree.erase(0);
-
-		tree.insert(std::make_pair(6, 6));
-
+		tree.insert( make_pair(6, 6) );
+		tree.erase(7);
+		tree.insert( make_pair(9, 9) );
 		tree.erase(7);
 
-		tree.insert(std::make_pair(9, 9));
+		tree.print_dot(3);
 
-		tree.erase(7);
-
-
-		tree.print_dot();
-
-		for(AA_tree<int, int >::iterator it = tree.begin(); it != tree.end(); ++it)
+		for(map<int, int >::iterator it = tree.begin(); it != tree.end(); ++it)
 		{
 			std::cout << it->first << it->second << "\n";
 		}
 		std::cout <<  "\n";
 
-		for(AA_tree<int, int>::const_iterator it = tree.begin(); it != tree.end(); ++it)
+		for(map<int, int>::const_iterator it = tree.begin(); it != tree.end(); ++it)
 		{
 			std::cout << it->first << it->second << "\n";
 		}
 		std::cout <<  "\n";
 
-		for(AA_tree<int, int>::reverse_iterator it = tree.rbegin(); it != tree.rend(); ++it)
+		for(map<int, int>::reverse_iterator it = tree.rbegin(); it != tree.rend(); ++it)
 		{
 			std::cout << it->first << it->second << "\n";
 		}
 		std::cout <<  "\n";
 	}
-#endif
-#ifdef D
 	{
 		// Checking value replacement
-		using ft::AA_tree;
+		using ft::map;
 
-		AA_tree<int, NotDefaultConstructiblePerson> tree;
+		map<int, NDCPerson> tree;
 
-		tree.insert(1, NotDefaultConstructiblePerson(42, "Jean"));
-		tree.insert(1, NotDefaultConstructiblePerson(23, "Thomas"));
-		tree.print_dot();
+		tree.insert( make_pair( 1, NDCPerson( 42, "Jean" )) );
+		tree.insert( make_pair( 1, NDCPerson(23, "Thomas")) );
+
+		tree.insert( make_pair( -1, NDCPerson( 30, "Eli" )) );
+		tree.insert( make_pair( 5, NDCPerson(29, "Jean")) );
+
+		tree.print_dot(4);
 	}
-#endif
-
 	return 0;
 }

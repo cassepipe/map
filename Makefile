@@ -1,57 +1,66 @@
 ##################
-##	VARIABLES	##
+##  VARIABLES   ##
 ##################
 
-NAME			=	a.out
-CXX				=	g++
-CXX				=	clang++
+FT				= ft_containers_test
+STD				= std_containers_test
+CXX				= g++
+CXX				= clang++
+DIFF			= diff
+SHELL			= zsh
 
-SRC/SOURCES		=	$(wildcard *.cpp)
-OBJ/OBJECTS		=	$(patsubst %.cpp, obj/%.o, $(SRC/SOURCES))
-OBJ/DEPS		=	$(patsubst %.o, %.d, $(OBJ/OBJECTS))
+SOURCES			= $(wildcard *.cpp)
+OBJ/FT_OBJECTS	= $(patsubst %.cpp,  obj/ft_%.o, $(SOURCES))
+OBJ/STD_OBJECTS	= $(patsubst %.cpp, obj/std_%.o, $(SOURCES))
+OBJ/FT_DEPS		= $(patsubst %.o,           %.d, $(OBJ/FT_OBJECTS))
+OBJ/STD_DEPS	= $(patsubst %.o,           %.d, $(OBJ/STD_OBJECTS))
 
 # FLAGS 
 INCLUDE_FLAGS	= -I.
-CPPFLAGS		= ${INCLUDE_FLAGS} -MMD -MP
+CPPFLAGS		= ${INCLUDE_FLAGS} -MMD 
 #Add -Werror before correction 
-CXXFLAGS		=	-Wall -Wextra -g3 -std=c++98
+CXXFLAGS		= -Wall -Wextra -g3 -std=c++98 -Wno-macro-redefined
 LDFLAGS			=
 LDLIBS			= 
 #Our beloved address sanitizer
-ASAN_FLAG		=	-fsanitize=address,undefined
+ASAN_FLAG		=  -fsanitize=address,undefined
 CXXFLAGS		+=	$(ASAN_FLAG)	
 LDFLAGS			+=	$(ASAN_FLAG)	
 
 ##############
-##	RULES	##
+##  RULES   ##
 ##############
 
-all:			$(NAME)
+all:			$(FT) $(STD)
+				$(DIFF) =( ./${FT} )  =( ./${STD}  ) 
 
-$(NAME):		${OBJ/OBJECTS} 
+$(FT):			$(OBJ/FT_OBJECTS)
 				@echo "Linking..."
 				@# LDFLAGS (-L) always come before oject files !
-				${CXX} -o $@ ${LDFLAGS} ${OBJ/OBJECTS} ${LDLIBS}
+				${CXX} -o $@ ${LDFLAGS} $^ ${LDLIBS}
 
-obj/%.o:		%.cpp Makefile | obj
-				@mkdir -p $(dir $@)
-				${CXX} ${CPPFLAGS} ${CXXFLAGS} -c $< -o $@
+$(STD):			${OBJ/STD_OBJECTS}
+				@echo "Linking..."
+				@# LDFLAGS (-L) always come before oject files !
+				${CXX} -o $@ ${LDFLAGS} $< ${LDLIBS}
+
+obj/ft_%.o:		%.cpp Makefile | obj
+				${CXX} -DNAMESPACE=ft  ${CPPFLAGS} ${CXXFLAGS} -c $< -o $@
+
+obj/std_%.o:	%.cpp Makefile | obj
+				${CXX} -DNAMESPACE=std ${CPPFLAGS} ${CXXFLAGS} -c $< -o $@
 obj:			
 				mkdir obj
 clean:			
 				rm -rf obj
 
 fclean:			clean
-				rm -rf $(NAME)
+				rm -rf $(FT)
+				rm -rf $(STD)
 
 re:				fclean all
 
-print_name:
-				@echo $(NAME)
+-include $(OBJ/FT_DEPS)
+-include $(OBJ/STD_DEPS)
 
-run:			all
-				./$(NAME)
-
--include $(OBJ/DEPS)
-
-.PHONY:			all clean fclean re print_name run
+.PHONY:			all clean fclean re
