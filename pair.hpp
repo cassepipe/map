@@ -21,31 +21,15 @@ struct pair
 	{
 	}
 
-	/* Copy Constructor */ pair(const pair& p) : first(p.first), second(p.second)
-	{
-	}
+	//[> Copy Constructor <] pair(const pair& p) : first(p.first), second(p.second)
+	//{
+	//}
 
 	// Why is this allowed ? I don't know
 	template <typename U1, typename U2>
 	pair(const pair<U1, U2>& p) : first(p.first), second(p.second)
 	{
 	}
-
-	operator pair<const T1, const T2>()
-	{
-		return pair<const T1, const T2>(first, second);
-	} 
-
-	operator pair<const T1, T2>()
-	{
-		return pair<const T1,  T2>(first, second);
-	}
-
-	operator pair<T1, const T2>()
-	{
-		return pair<T1, const T2>(first, second);
-	}
-
 };
 
 template <typename T1, typename T2>
