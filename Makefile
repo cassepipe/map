@@ -1,13 +1,16 @@
 ##################
 ##  VARIABLES   ##
 ##################
+.DELETE_ON_ERROR:
+MAKEFLAGS += --warn-undefined-variables
+MAKEFLAGS += --no-builtin-rules
 
-FT				= ft_containers_test
-STD				= std_containers_test
+DIFF			= meld
 CXX				= g++
 CXX				= clang++
-DIFF			= diff
 SHELL			= zsh
+FT				= ft_containers_test
+STD				= std_containers_test
 
 SOURCES			= $(wildcard *.cpp)
 OBJ/FT_OBJECTS	= $(patsubst %.cpp,  obj/ft_%.o, $(SOURCES))

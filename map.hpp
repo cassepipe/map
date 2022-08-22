@@ -1,6 +1,7 @@
 #ifndef MAP_HPP
 #define MAP_HPP
 
+#include <cstddef>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -13,6 +14,7 @@
 #include "iterator_traits.hpp"
 #include "reverse_iterator.hpp"
 #include "pair.hpp"
+#include "algorithm.hpp"
 
 namespace ft
 {
@@ -29,14 +31,17 @@ class map
 	class aat_iterator;
 
   public:
-
 	typedef Key                                                        key_type;
 	typedef Value                                                   mapped_type;
-	typedef ft::pair<const Key, Value>                              value_type;
-	typedef AA_node                                                   node_type;
-	typedef AA_node *                                              node_pointer;
-	typedef Alloc                                                allocator_type;
+	typedef ft::pair<const Key, Value>                               value_type;
 	typedef std::size_t                                               size_type;
+	typedef std::ptrdiff_t                                      difference_type;
+	typedef Alloc                                                allocator_type;
+	typedef KeyCmpFn                                                key_compare;
+	typedef value_type&                                               reference;
+	typedef value_type const&                                   const_reference;
+	typedef typename Alloc::pointer                                     pointer;
+	typedef typename Alloc::const_pointer                         const_pointer;
 	typedef aat_iterator<Value>   			                           iterator;
 	typedef aat_iterator<const Value>                            const_iterator;
 	typedef ft::reverse_iterator<iterator>                     reverse_iterator;
@@ -44,19 +49,21 @@ class map
 
   protected:
 	// the template keyword is only here so that the < can be correctly parsed
+	typedef AA_node                                                      node_t;
+	typedef AA_node *                                                node_ptr_t;
 	typedef typename
-	Alloc::template rebind<node_type>::other                node_allocator_type;
+	Alloc::template rebind<node_t>::other                          node_alloc_t;
 
 	// Were we able to use c++11, we would have used std::allocator_traits like this
 	// typedef typename
-	// std::allocator_traits<Alloc>::template rebind_alloc<node_type>          node_allocator_type;
+	// std::allocator_traits<Alloc>::template rebind_alloc<node_t>          node_allocator_type;
 	
 
 	/* STATE */
-	node_pointer        root_;
+	node_ptr_t          root_;
 	size_type           size_;
-	node_allocator_type node_alloc_;
-	KeyCmpFn            compare_func_;
+	node_alloc_t  node_alloc_;
+	key_compare         compare_func_;
 
 	// Singleton for the NIL node 
 #define NIL get_nil_()
@@ -111,7 +118,7 @@ class map
 
 	/* HELPERS */
 
-	static node_pointer update_root(node_pointer root)
+	static node_ptr_t update_root(node_ptr_t root)
 	{
 		// If the the parent of the root is NIL
 		// while (root != NIL)
@@ -122,21 +129,21 @@ class map
 		return root;
 	}
 
-	static node_pointer leftmost_(node_pointer node)
+	static node_ptr_t leftmost_(node_ptr_t node)
 	{
 		while (node->left != NIL)
 			node = node->left;
 		return node;
 	}
 
-	static node_pointer rightmost_(node_pointer node)
+	static node_ptr_t rightmost_(node_ptr_t node)
 	{
 		while (node->right != NIL)
 			node = node->right;
 		return node;
 	}
 
-	static node_pointer in_order_successor_(node_pointer node)
+	static node_ptr_t in_order_successor_(node_ptr_t node)
 	{
 		if (node->right == NIL)
 			return node;
@@ -147,7 +154,7 @@ class map
 		return node;
 	}
 
-	static node_pointer in_order_predecessor_(node_pointer node)
+	static node_ptr_t in_order_predecessor_(node_ptr_t node)
 	{
 		if (node->left == NIL)
 			return node;
@@ -160,7 +167,7 @@ class map
 
 	/*TREE BALANCING*/
 
-	static node_pointer skew_(node_pointer root)
+	static node_ptr_t skew_(node_ptr_t root)
 	{
 		if (root->level && root->left->level == root->level) // red node to our left?
 			return rotate_right_(root);
@@ -168,10 +175,10 @@ class map
 			return root; // else no change neeeded
 	}
 
-	static node_pointer rotate_right_(node_pointer oldroot)
+	static node_ptr_t rotate_right_(node_ptr_t oldroot)
 	{
 		// Right rotation
-		node_pointer newroot = oldroot->left;
+		node_ptr_t newroot = oldroot->left;
 
 		newroot->parent = oldroot->parent; // Parenting
 		oldroot->parent = newroot;
@@ -184,7 +191,7 @@ class map
 		return newroot;
 	}
 
-	static node_pointer split_(node_pointer root)
+	static node_ptr_t split_(node_ptr_t root)
 	{
 		if (root->level && root->right->right->level == root->level) // 2 red nodes on our right ?
 			return rotate_left_(root);
@@ -192,10 +199,10 @@ class map
 			return root; // else no change needed
 	}
 
-	static node_pointer rotate_left_(node_pointer oldroot)
+	static node_ptr_t rotate_left_(node_ptr_t oldroot)
 	{
 		//Left rotation
-		node_pointer newroot = oldroot->right;
+		node_ptr_t newroot = oldroot->right;
 
 		newroot->parent = oldroot->parent; // Parenting
 		oldroot->parent = newroot;
@@ -211,7 +218,7 @@ class map
 		return newroot;
 	}
 
-	static void update_level_(node_pointer node)
+	static void update_level_(node_ptr_t node)
 	{
 		int ideal_level = 1 + std::min(node->left->level, node->right->level);
 		// node's level above ideal ?
@@ -224,7 +231,7 @@ class map
 	}
 
 	// Update node's level and then three skews and two splits do the trick
-	static node_pointer fixup_after_delete_(node_pointer node)
+	static node_ptr_t fixup_after_delete_(node_ptr_t node)
 	{
 		update_level_(node);
 		node               = skew_(node);
@@ -239,22 +246,22 @@ class map
 
 	iterator insert_(Key const& k, Value const& v)
 	{
-		node_pointer ret = NULL;;
+		node_ptr_t ret = NULL;;
 
 		root_ = insert_(k, v, NIL, root_, ret);
-		// Need this line if we want root to be its own parent, need to change update_root then
+		// Need this line if we want root to be its own parent, need to change update_root if commmented out
 		root_->parent = root_;
 		return iterator(root_, ret);
 	}
 
-	node_pointer insert_(Key const& k, Value const& v, node_pointer parent, node_pointer current_node, node_pointer ret)
+	node_ptr_t insert_(Key const& k, Value const& v, node_ptr_t parent, node_ptr_t current_node, node_ptr_t ret)
 	{
 		if (current_node == NIL) // fell out of the tree?
 		{
 			++size_;
 			// create a new leaf node
 			current_node = node_alloc_.allocate(1);
-			node_alloc_.construct(current_node, node_type(k, v, parent));
+			node_alloc_.construct(current_node, node_t(k, v, parent));
 			ret = current_node;
 		}
 		else if (compare_func_(k, current_node->key()))        // key is smaller?
@@ -270,7 +277,7 @@ class map
 	}
 
 	// This implementation does not bother with special cases that do not need rebalancing
-	node_pointer remove_(Key k, node_pointer node)
+	node_ptr_t remove_(Key k, node_ptr_t node)
 	{
 		if (node == NIL) // Fell out of tree, key does not exist
 			return node; // No-op
@@ -295,7 +302,7 @@ class map
 			}
 			else // Find succesor, copy its values and remove successor instead
 			{
-				node_pointer successor   = in_order_successor_(node);
+				node_ptr_t successor   = in_order_successor_(node);
 				node->key()              = successor->key();
 				node->value()            = successor->value();
 				node->right              = remove_(successor->key(), node->right);
@@ -304,7 +311,7 @@ class map
 		return fixup_after_delete_(node);
 	}
 
-	node_pointer clear_(node_pointer node)
+	node_ptr_t clear_(node_ptr_t node)
 	{
 		if (node->left != NIL)
 			node->left = clear_(node->left);
@@ -319,6 +326,8 @@ class map
 		}
 		return NIL;
 	}
+
+	/* INTERFACE */
 
   public:
 	/*Constructor*/ map(Alloc alloc = Alloc()) :
@@ -339,6 +348,12 @@ class map
 			this->clear();
 			insert(rhs.begin(), rhs.last); // There must be a better way though
 		}
+	}
+
+	mapped_type& operator[]( const Key& key )
+	{
+		// Thanks cppref
+		return insert(std::make_pair(key, mapped_type())).first->second;
 	}
 
 	// MODIFIERS
@@ -394,7 +409,7 @@ class map
 	{
 		if (this != &other)
 		{
-			node_pointer tmp_root = root_;
+			node_ptr_t tmp_root = root_;
 			size_type tmp_size = size_;
 
 			root_ = other.root_;
@@ -436,38 +451,175 @@ class map
 
 	iterator find( const Key& key )
 	{
-		AA_node* current = root_;
+		node_ptr_t current;
+		bool searched_is_strictly_less;
+		bool searched_is_strictly_greater;
 
+		current = root_;
 		while (current != NIL)
 		{
-			bool searched_is_less = compare_func_(key, current->key());
-			bool searched_is_greater = compare_func_(current->key, key);
-			if (searched_is_less)
+			searched_is_strictly_less = compare_func_(key, current->key());
+			searched_is_strictly_greater = compare_func_(current->key, key);
+			if (searched_is_strictly_less)
 				current = current->_left;
-			else if (searched_is_greater)
+			else if (searched_is_strictly_greater)
 				current = current->_right;
-			else
-				return this->end();
+			else // they're equal
+				return iterator(root_, current);
 		}
-		return iterator(current);
+		return this->end();
 	}
 
 	const_iterator find( const Key& key ) const
 	{
-		AA_node* current = root_;
+		node_ptr_t current;
+		bool searched_is_strictly_less;
+		bool searched_is_strictly_greater; 
 
+		current = root_;
 		while (current != NIL)
 		{
-			bool searched_is_less = compare_func_(key, current->key());
-			bool searched_is_greater = compare_func_(current->key, key);
-			if (searched_is_less)
+			searched_is_strictly_less = compare_func_(key, current->key());
+			searched_is_strictly_greater = compare_func_(current->key, key);
+			if (searched_is_strictly_less)
 				current = current->_left;
-			else if (searched_is_greater)
+			else if (searched_is_strictly_greater)
 				current = current->_right;
-			else
-				return this->end();
+			else // they're equal
+				return const_iterator(root_, current);
 		}
-		return const_iterator(current);
+		return this->end();
+	}
+
+	ft::pair<iterator,iterator> equal_range( const Key& key )
+	{
+		return ft::make_pair(lower_bound(key), upper_bound(key));
+	}
+
+	ft::pair<const_iterator,const_iterator> equal_range( const Key& key ) const
+	{
+		return ft::make_pair(lower_bound(key), upper_bound(key));
+	}
+
+	iterator lower_bound( const Key& key )
+	{
+		bool searched_is_strictly_less;  
+		bool searched_is_strictly_greater; 
+		node_ptr_t current;
+		node_ptr_t key_successor;
+
+		key_successor = NULL;
+		current = root_;
+		while (current != NIL)
+		{
+			searched_is_strictly_less = compare_func_(key, current->key());
+			searched_is_strictly_greater = compare_func_(current->key, key);
+			
+			if (searched_is_strictly_less) // than current's key
+				current = current->_left;
+			else if (searched_is_strictly_greater) // than current's key
+			{
+				key_successor = current;
+				current = current->_left;
+			}
+			else
+				return iterator(root_, key_successor);
+		}
+		return iterator(root_, key_successor);
+
+	}
+
+	const_iterator lower_bound( const Key& key ) const
+	{
+		bool searched_is_strictly_less;  
+		bool searched_is_strictly_greater; 
+		node_ptr_t current;
+		node_ptr_t key_successor;
+
+		key_successor = NULL;
+		current = root_;
+		while (current != NIL)
+		{
+			searched_is_strictly_less = compare_func_(key, current->key());
+			searched_is_strictly_greater = compare_func_(current->key, key);
+			
+			if (searched_is_strictly_less) // than current's key
+				current = current->_left;
+			else if (searched_is_strictly_greater) // than current's key
+			{
+				key_successor = current;
+				current = current->_left;
+			}
+			else
+				return const_iterator(root_, key_successor);
+		}
+		return const_iterator(root_, key_successor);
+	}
+
+	iterator upper_bound( const Key& key )
+	{
+		bool searched_is_strictly_less;  
+		bool searched_is_strictly_greater; 
+		node_ptr_t current;
+		node_ptr_t key_successor;
+
+		key_successor = NULL;
+		current = root_;
+		while (current != NIL)
+		{
+			searched_is_strictly_less = compare_func_(key, current->key());
+			searched_is_strictly_greater = compare_func_(current->key, key);
+			
+			if (searched_is_strictly_less) // than current's key
+				current = current->_left;
+			else if (searched_is_strictly_greater) // than current's key
+			{
+				key_successor = current;
+				current = current->_left;
+			}
+			else
+				break;
+		}
+		return iterator(root_, key_successor);
+	}
+
+	const_iterator key_successor( const Key& key ) const
+	{
+		bool searched_is_strictly_less;  
+		bool searched_is_strictly_greater; 
+		node_ptr_t current;
+		node_ptr_t key_successor;
+
+		key_successor = NULL;
+		current = root_;
+		while (current != NIL)
+		{
+			searched_is_strictly_less = compare_func_(key, current->key());
+			searched_is_strictly_greater = compare_func_(current->key, key);
+			
+			if (searched_is_strictly_less) // than current's key
+				current = current->_left;
+			else if (searched_is_strictly_greater) // than current's key
+			{
+				key_successor = current;
+				current = current->_left;
+			}
+			else
+				break;
+		}
+		return const_iterator(root_, key_successor);
+	}
+
+	/* OBSERVERS */
+
+	allocator_type get_allocator() const
+	{
+		return allocator_type(node_alloc_); // Implicit conversion
+	}
+
+	key_compare key_comp() const
+	{
+		return compare_func_;
 	}
 
 	/* NESTED ITERATOR CLASSES */
@@ -484,16 +636,16 @@ class map
 		typedef bidirectional_iterator_tag                    iterator_category;
 		typedef std::ptrdiff_t                                  difference_type;
 		typedef
-		map<Key, Value, KeyCmpFn, Alloc>::node_pointer         node_pointer;
+		map<Key, Value, KeyCmpFn, Alloc>::node_ptr_t         node_ptr_t;
 
 	  protected:
 		/* STATE */
-		node_pointer             root_;
-		node_pointer             current_;
+		node_ptr_t             root_;
+		node_ptr_t             current_;
 
 	  public:
 
-		/* Constructor */ aat_iterator(node_pointer root, node_pointer current = NULL)
+		/* Constructor */ aat_iterator(node_ptr_t root, node_ptr_t current)
 			: root_(root), current_(current)
 		{ }
 
@@ -591,22 +743,22 @@ class map
   public:
 	iterator begin()
 	{
-		return ++iterator(root_);
+		return ++iterator(root_, NULL);
 	}
 
 	iterator end()
 	{
-		return iterator(root_);
+		return iterator(root_, NULL);
 	}
 
 	const_iterator begin() const
 	{
-		return ++const_iterator(root_);
+		return ++const_iterator(root_, NULL);
 	}
 
 	const_iterator end() const
 	{
-		return const_iterator(root_);
+		return const_iterator(root_, NULL);
 	}
 
 	reverse_iterator rbegin()
@@ -629,9 +781,32 @@ class map
 		return const_reverse_iterator(this->begin());
 	}
 
+	/* VALUE COMPARE */
+
+	/* This exists only for forwarding the key_comp function*/
+	class value_compare : public std::binary_function<value_type, value_type, bool>
+	{
+		protected:
+		KeyCmpFn comp;
+		value_compare(KeyCmpFn c) : comp(c)
+		{ }
+
+		public:
+		value_compare() : comp()
+		{ }
+		bool operator()(value_type const& x, value_type const& y) const { return comp(x.first, y.first); }
+	};
+
+	map<Key, Value, KeyCmpFn, Alloc>::value_compare value_comp() const
+	{
+		return value_compare(compare_func_);
+
+	}
+
+#ifdef DEBUG
 	/* DEBUG */
 
-	void print_node(std::stringstream &ss, node_pointer node)
+	void print_node(std::stringstream &ss, node_ptr_t node)
 	{
 		if (node != NIL)
 		{
@@ -659,11 +834,10 @@ class map
 		}
 	}
 
-#define DEFAULT_FILENAME "tree"
+# define DEFAULT_FILENAME "tree"
 	void print_dot()
 	{
 		static int n;
-		//n = 0;
 		print_dot(++n);
 	}
 
@@ -679,10 +853,59 @@ class map
 		file << ss.str();
 		file << "\n}";
 	}
-#undef DEFAULT_FILENAME
-
+# undef DEFAULT_FILENAME
+#endif /* ifdef DEBUG */
 #undef NIL
 }; // class AA_tree
+   
+template< class Key, class T, class Compare, class Allocator >
+bool	operator==( map< Key, T, Compare, Allocator > const & x, map< Key, T, Compare, Allocator> const & y )
+{
+	if ( x.size() != y.size() )
+		return false;
+	return ft::equal( x.begin(), x.end(), y.begin() );
+}
+
+template< class Key, class T, class Compare, class Allocator >
+bool	operator<( map< Key, T, Compare, Allocator > const & x, map< Key, T, Compare, Allocator> const & y )
+{
+	return ft::lexicographical_compare( x.begin(), x.end(), y.begin(), y.end() );
+}
+
+template< class Key, class T, class Compare, class Allocator >
+bool	operator!=( map< Key, T, Compare, Allocator > const & x, map< Key, T, Compare, Allocator> const & y )
+{
+	return !( x == y );
+}
+
+template< class Key, class T, class Compare, class Allocator >
+bool	operator>( map< Key, T, Compare, Allocator > const & x, map< Key, T, Compare, Allocator> const & y )
+{
+	return !( x <= y );
+}
+
+template< class Key, class T, class Compare, class Allocator >
+bool	operator>=( map< Key, T, Compare, Allocator > const & x, map< Key, T, Compare, Allocator> const & y )
+{
+	return !( x < y );
+}
+
+template< class Key, class T, class Compare, class Allocator >
+bool	operator<=( map< Key, T, Compare, Allocator > const & x, map< Key, T, Compare, Allocator> const & y )
+{
+	return !( y < x );
+}
+
 } // namespace ft
+
+// specialized algorithms
+namespace std {
+template< class Key, class T, class Compare, class Allocator >
+void	swap( ft::map< Key, T, Compare, Allocator > & x, ft::map< Key, T, Compare, Allocator > & y )
+{
+	x.swap( y );
+	return ;
+}
+} // namespace std
 
 #endif /* MAP_HPP */
