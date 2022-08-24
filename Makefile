@@ -5,10 +5,10 @@
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
-DIFF			= meld
+DIFF			= diff -s
 CXX				= g++
 CXX				= clang++
-SHELL			= zsh
+SHELL			= bash
 FT				= ft_containers_test
 STD				= std_containers_test
 
@@ -22,7 +22,7 @@ OBJ/STD_DEPS	= $(patsubst %.o,           %.d, $(OBJ/STD_OBJECTS))
 INCLUDE_FLAGS	= -I.
 CPPFLAGS		= ${INCLUDE_FLAGS} -MMD 
 #Add -Werror before correction 
-CXXFLAGS		= -Wall -Wextra -g3 -std=c++98 -Wno-macro-redefined
+CXXFLAGS		= -Wall -Wextra -g3 -std=c++98 -Wno-macro-redefined -Wno-return-type
 LDFLAGS			=
 LDLIBS			= 
 #Our beloved address sanitizer
@@ -34,8 +34,7 @@ LDFLAGS			+=	$(ASAN_FLAG)
 ##  RULES   ##
 ##############
 
-all:			$(FT) $(STD)
-				$(DIFF) =( ./${FT} )  =( ./${STD}  ) 
+all:			$(FT) $(STD) diff
 
 $(FT):			$(OBJ/FT_OBJECTS)
 				@echo "Linking..."
@@ -45,7 +44,7 @@ $(FT):			$(OBJ/FT_OBJECTS)
 $(STD):			${OBJ/STD_OBJECTS}
 				@echo "Linking..."
 				@# LDFLAGS (-L) always come before oject files !
-				${CXX} -o $@ ${LDFLAGS} $< ${LDLIBS}
+				${CXX} -o $@ ${LDFLAGS} $^ ${LDLIBS}
 
 obj/ft_%.o:		%.cpp Makefile | obj
 				${CXX} -DNAMESPACE=ft  ${CPPFLAGS} ${CXXFLAGS} -c $< -o $@
@@ -63,7 +62,14 @@ fclean:			clean
 
 re:				fclean all
 
+run_ft:			
+				./$(FT)
+diff:			
+				$(DIFF) <( ./${FT} )  <( ./${STD}  ) 
+				#$(DIFF) <( ./${FT} 2>&1)  <( ./${STD} 2>&1 ) 
+
+
 -include $(OBJ/FT_DEPS)
 -include $(OBJ/STD_DEPS)
 
-.PHONY:			all clean fclean re
+.PHONY:			all clean fclean re run_ft diff

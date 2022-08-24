@@ -49,6 +49,7 @@ class map
 
   protected:
 	// the template keyword is only here so that the < can be correctly parsed
+	typedef ft::pair<const Key, Value>                              pair_type_t;
 	typedef AA_node                                                      node_t;
 	typedef AA_node *                                                node_ptr_t;
 	typedef typename
@@ -182,7 +183,8 @@ class map
 
 		newroot->parent = oldroot->parent; // Parenting
 		oldroot->parent = newroot;
-		newroot->right->parent = oldroot;
+		if (newroot->right != NIL)
+			newroot->right->parent = oldroot;
 
 		oldroot->left        = newroot->right;
 		newroot->right       = oldroot;
@@ -206,7 +208,8 @@ class map
 
 		newroot->parent = oldroot->parent; // Parenting
 		oldroot->parent = newroot;
-		newroot->left->parent = oldroot;
+		if (newroot->left != NIL)
+			newroot->left->parent = oldroot;
 
 		oldroot->right       = newroot->left;
 		newroot->left        = oldroot;
@@ -248,13 +251,13 @@ class map
 	{
 		node_ptr_t ret = NULL;;
 
-		root_ = insert_(k, v, NIL, root_, ret);
+		root_ = insert_(k, v, NIL, root_, &ret);
 		// Need this line if we want root to be its own parent, need to change update_root if commmented out
 		root_->parent = root_;
 		return iterator(root_, ret);
 	}
 
-	node_ptr_t insert_(Key const& k, Value const& v, node_ptr_t parent, node_ptr_t current_node, node_ptr_t ret)
+	node_ptr_t insert_(Key const& k, Value const& v, node_ptr_t parent, node_ptr_t current_node, node_ptr_t *ret)
 	{
 		if (current_node == NIL) // fell out of the tree?
 		{
@@ -262,7 +265,7 @@ class map
 			// create a new leaf node
 			current_node = node_alloc_.allocate(1);
 			node_alloc_.construct(current_node, node_t(k, v, parent));
-			ret = current_node;
+			*ret = current_node;
 		}
 		else if (compare_func_(k, current_node->key()))        // key is smaller?
 			current_node->left = insert_(k, v, current_node, current_node->left, ret);   // ->insert left
@@ -271,7 +274,7 @@ class map
 		else
 		{
 			current_node->value() = v;
-			ret = current_node;
+			*ret = current_node;
 		}
 		return split_(skew_(current_node)); // restructure and return result
 	}
@@ -352,8 +355,12 @@ class map
 
 	mapped_type& operator[]( const Key& key )
 	{
-		// Thanks cppref
-		return insert(std::make_pair(key, mapped_type())).first->second;
+		// Using operator[] requires that the mapped type be default constructible
+		// If that is not the case use this->at() or in C++11 this->emplace()
+		iterator it = lower_bound(key); // (*it).first is *not less* than key
+		if ( it == this->end() || compare_func_(key, (*it).first) ) // if (*i).first is greater than key i.e key does not exist
+			it = insert(it, pair_type_t(key, mapped_type())); // Insert default value with that key
+		return (*it).second;
 	}
 
 	// MODIFIERS
@@ -363,14 +370,15 @@ class map
 		root_ = clear_(root_);
 	}
 
-	ft::pair<iterator, bool> insert(value_type const& pair)
+	ft::pair<iterator, bool> insert(pair_type_t const& pair)
 	{
 		size_type size_before = size_;
+		iterator it = insert_(pair.first, pair.second);
 
 		if (size_before == size_)
-			return ft::make_pair(insert_(pair.first, pair.second), false);
+			return ft::make_pair(it, false);
 		else
-			return ft::make_pair(insert_(pair.first, pair.second), true);
+			return ft::make_pair(it, true);
 	}
 
 	void insert(iterator first, iterator last)
@@ -379,7 +387,7 @@ class map
 			insert(*first);
 	}
 
-	iterator insert(iterator hint, value_type const &new_val)
+	iterator insert(iterator hint, pair_type_t const &new_val)
 	{
 		(void)hint;
 		return insert(new_val).first;
@@ -513,14 +521,14 @@ class map
 		while (current != NIL)
 		{
 			searched_is_strictly_less = compare_func_(key, current->key());
-			searched_is_strictly_greater = compare_func_(current->key, key);
+			searched_is_strictly_greater = compare_func_(current->key(), key);
 			
 			if (searched_is_strictly_less) // than current's key
-				current = current->_left;
+				current = current->left;
 			else if (searched_is_strictly_greater) // than current's key
 			{
 				key_successor = current;
-				current = current->_left;
+				current = current->left;
 			}
 			else
 				return iterator(root_, key_successor);
@@ -630,15 +638,15 @@ class map
 	{
 	  public:
 		typedef typename
-		map<const Key, MaybeConstValue, KeyCmpFn, Alloc>::value_type       value_type;
+		map<const Key, MaybeConstValue, KeyCmpFn, Alloc>::value_type value_type;
 		typedef value_type&                                           reference;
 		typedef value_type*                                             pointer;
 		typedef bidirectional_iterator_tag                    iterator_category;
 		typedef std::ptrdiff_t                                  difference_type;
+	  protected:
 		typedef
 		map<Key, Value, KeyCmpFn, Alloc>::node_ptr_t         node_ptr_t;
 
-	  protected:
 		/* STATE */
 		node_ptr_t             root_;
 		node_ptr_t             current_;
@@ -784,7 +792,7 @@ class map
 	/* VALUE COMPARE */
 
 	/* This exists only for forwarding the key_comp function*/
-	class value_compare : public std::binary_function<value_type, value_type, bool>
+	class value_compare : public std::binary_function<pair_type_t, pair_type_t, bool>
 	{
 		protected:
 		KeyCmpFn comp;
@@ -794,7 +802,7 @@ class map
 		public:
 		value_compare() : comp()
 		{ }
-		bool operator()(value_type const& x, value_type const& y) const { return comp(x.first, y.first); }
+		bool operator()(pair_type_t const& x, pair_type_t const& y) const { return comp(x.first, y.first); }
 	};
 
 	map<Key, Value, KeyCmpFn, Alloc>::value_compare value_comp() const

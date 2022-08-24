@@ -1,12 +1,13 @@
 #ifndef TEST_STACK_HPP
+#define TEST_STACK_HPP
 
-void test_stack();
-void test_constructor();
-void test_empty();
-void test_pop();
-void test_push();
-void test_relationalOperators();
-void test_size();
-void test_top();
+int test_stack();
+int test_stack_constructor();
+int test_stack_empty();
+int test_stack_pop();
+int test_stack_push();
+int test_stack_relationalOperators();
+int test_stack_size();
+int test_stack_top();
 
 #endif /* TEST_STACK_HPP */

@@ -1,12 +1,48 @@
+#include "test.h"
 #include "test_stack.hpp"
 
-void test_stack()
+int test_stack()
 {
-	test_constructor();
-	test_empty();
-	test_pop();
-	test_push();
-	test_relationalOperators();
-	test_size();
-	test_top();
+	test_stack_constructor();
+	test_stack_empty();
+	test_stack_pop();
+	test_stack_push();
+	test_stack_relationalOperators();
+	test_stack_size();
+	test_stack_top();
+}
+
+int test_stack_constructor()
+{
+
+}
+
+int test_stack_empty()
+{
+
+}
+
+int test_stack_pop()
+{
+
+}
+
+int test_stack_push()
+{
+
+}
+
+int test_stack_relationalOperators()
+{
+
+}
+
+int test_stack_size()
+{
+
+}
+
+int test_stack_top()
+{
+
 }
