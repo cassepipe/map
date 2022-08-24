@@ -19,10 +19,11 @@ OBJ/FT_DEPS		= $(patsubst %.o,           %.d, $(OBJ/FT_OBJECTS))
 OBJ/STD_DEPS	= $(patsubst %.o,           %.d, $(OBJ/STD_OBJECTS))
 
 # FLAGS 
+DEBUG			= -DDEBUG
 INCLUDE_FLAGS	= -I.
-CPPFLAGS		= ${INCLUDE_FLAGS} -MMD 
+CPPFLAGS		= ${INCLUDE_FLAGS} ${DEBUG} -MMD 
 #Add -Werror before correction 
-CXXFLAGS		= -Wall -Wextra -g3 -std=c++98 -Wno-macro-redefined -Wno-return-type
+CXXFLAGS		= -Wall -Wextra -g3 -std=c++98 -Wno-macro-redefined -Wno-return-type -O0
 LDFLAGS			=
 LDLIBS			= 
 #Our beloved address sanitizer
@@ -55,6 +56,7 @@ obj:
 				mkdir obj
 clean:			
 				rm -rf obj
+				rm -rf tree*
 
 fclean:			clean
 				rm -rf $(FT)

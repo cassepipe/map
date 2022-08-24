@@ -1,14 +1,16 @@
 #ifndef TEST_H
 #define TEST_H
 
-#if NAMESPACE==ft
 # include "vector.hpp"
 # include "map.hpp"
-#endif
 
 #include <vector>
 #include <map>
 #include <stack>
+
+#ifndef NAMESPACE
+# define NAMESPACE ft
+#endif
 
 using NAMESPACE::pair;
 using NAMESPACE::make_pair;

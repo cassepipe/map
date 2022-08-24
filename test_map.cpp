@@ -36,13 +36,15 @@ int test_map()
 
 int	test_map_begin()
 {
-	map<char, int> myMap;
+	map<char, int> tree;
 
-	myMap['b'] = 100;
-	myMap['a'] = 200;
-	myMap['c'] = 300;
+	tree['b'] = 100;
+	tree['a'] = 200;
+	tree['c'] = 300;
 
-	for ( NAMESPACE::map<char, int>::iterator it = myMap.begin(); it != myMap.end(); ++it)
+	tree.print_dot();
+
+	for ( NAMESPACE::map<char, int>::iterator it = tree.begin(); it != tree.end(); ++it)
 		std::cout << it->first << "=>" << it->second << std::endl;
 
 	return 0;

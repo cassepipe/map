@@ -83,6 +83,7 @@ class map
 	{
 		AA_node *left;
 		AA_node *right;
+		AA_node *parent;
 		int      level;
 
 		// To make the the nil node in get_nil()
@@ -90,14 +91,15 @@ class map
 		/*Default Constructor*/ AA_base_node() :
 			left(static_cast<AA_node*>(this)),
 			right(static_cast<AA_node*>(this)),
+			parent(static_cast<AA_node*>(this)),
 			level(0)
 		{ }
 
 	  protected:
-
-		/*Constructor*/ AA_base_node(AA_node *left, AA_node *right, int lvl) :
-			left(left),
-			right(right),
+		/*Constructor*/ AA_base_node(AA_node *l, AA_node *r, AA_node *p, int lvl) :
+			left(l),
+			right(r),
+			parent(p),
 			level(lvl)
 		{ }
 	};
@@ -105,12 +107,10 @@ class map
 	struct AA_node : public AA_base_node
 	{
 		std::pair<Key, Value> pair;
-		AA_node *parent;
 
 		/*Constructor*/ AA_node(Key k, Value v, AA_node *p) :
-			AA_base_node(NIL, NIL, 1),
-			pair(k, v),
-			parent(p)
+			AA_base_node(NIL, NIL, p, 1),
+			pair(k, v)
 		{ }
 
 		typename std::pair<Key, Value>::first_type & key() { return pair.first; }
@@ -121,12 +121,13 @@ class map
 
 	static node_ptr_t update_root(node_ptr_t root)
 	{
-		// If the the parent of the root is NIL
-		// while (root != NIL)
+		 //If the the parent of the root is NIL
+		 //while (root != NIL)
+		 //   root = root->parent;
 		
-		// If the root is its own parent use instead :
-		while (root != root->parent)
-		    root = root->parent;
+		 //If the root is its own parent use instead :
+		while (root != NIL && root != root->parent)
+			root = root->parent;
 		return root;
 	}
 
@@ -509,14 +510,17 @@ class map
 		return ft::make_pair(lower_bound(key), upper_bound(key));
 	}
 
+	/* Returns lower bound not less than key */
 	iterator lower_bound( const Key& key )
 	{
 		bool searched_is_strictly_less;  
 		bool searched_is_strictly_greater; 
 		node_ptr_t current;
-		node_ptr_t key_successor;
+		node_ptr_t parent;
 
-		key_successor = NULL;
+		if (root_ == NIL) // Empty tree
+			return this->end();
+		parent = NULL;
 		current = root_;
 		while (current != NIL)
 		{
@@ -527,24 +531,27 @@ class map
 				current = current->left;
 			else if (searched_is_strictly_greater) // than current's key
 			{
-				key_successor = current;
-				current = current->left;
+				current = current->right;
 			}
 			else
-				return iterator(root_, key_successor);
+				return iterator(root_, parent);
+			parent = current;
 		}
-		return iterator(root_, key_successor);
+		return ++iterator(root_, parent);
 
 	}
 
+	/* Returns lower bound not less than key */
 	const_iterator lower_bound( const Key& key ) const
 	{
 		bool searched_is_strictly_less;  
 		bool searched_is_strictly_greater; 
 		node_ptr_t current;
-		node_ptr_t key_successor;
+		node_ptr_t parent;
 
-		key_successor = NULL;
+		if (root_ == NIL) // Empty tree
+			return this->end();
+		parent = NULL;
 		current = root_;
 		while (current != NIL)
 		{
@@ -552,26 +559,29 @@ class map
 			searched_is_strictly_greater = compare_func_(current->key, key);
 			
 			if (searched_is_strictly_less) // than current's key
-				current = current->_left;
+				current = current->left;
 			else if (searched_is_strictly_greater) // than current's key
 			{
-				key_successor = current;
-				current = current->_left;
+				current = current->right;
 			}
-			else
-				return const_iterator(root_, key_successor);
+			else // searched and node key are equal
+				return const_iterator(root_, parent);
+			parent = current;
 		}
-		return const_iterator(root_, key_successor);
+		return ++const_iterator(root_, parent);
 	}
 
+	/* Returns iterator to the first element greater than key */
 	iterator upper_bound( const Key& key )
 	{
 		bool searched_is_strictly_less;  
 		bool searched_is_strictly_greater; 
 		node_ptr_t current;
-		node_ptr_t key_successor;
+		node_ptr_t best_predecessor;
 
-		key_successor = NULL;
+		if (root_ == NIL) // Empty tree
+			return this->end();
+		best_predecessor = NULL;
 		current = root_;
 		while (current != NIL)
 		{
@@ -579,26 +589,32 @@ class map
 			searched_is_strictly_greater = compare_func_(current->key, key);
 			
 			if (searched_is_strictly_less) // than current's key
-				current = current->_left;
+			{
+				current = current->left;
+				best_predecessor = current;
+			}
 			else if (searched_is_strictly_greater) // than current's key
 			{
-				key_successor = current;
-				current = current->_left;
+				current = current->right;
+				best_predecessor = current;
 			}
 			else
-				break;
+				best_predecessor = current;
 		}
-		return iterator(root_, key_successor);
+		return ++iterator(root_, best_predecessor);
 	}
 
-	const_iterator key_successor( const Key& key ) const
+	/* Returns iterator to the first element greater than key */
+	const_iterator upper_bound( const Key& key ) const
 	{
 		bool searched_is_strictly_less;  
 		bool searched_is_strictly_greater; 
 		node_ptr_t current;
-		node_ptr_t key_successor;
+		node_ptr_t best_predecessor;
 
-		key_successor = NULL;
+		if (root_ == NIL) // Empty tree
+			return this->end();
+		best_predecessor = NULL;
 		current = root_;
 		while (current != NIL)
 		{
@@ -606,16 +622,19 @@ class map
 			searched_is_strictly_greater = compare_func_(current->key, key);
 			
 			if (searched_is_strictly_less) // than current's key
-				current = current->_left;
+			{
+				current = current->left;
+				best_predecessor = current;
+			}
 			else if (searched_is_strictly_greater) // than current's key
 			{
-				key_successor = current;
-				current = current->_left;
+				current = current->right;
+				best_predecessor = current;
 			}
 			else
-				break;
+				best_predecessor = current;
 		}
-		return const_iterator(root_, key_successor);
+		return ++const_iterator(root_, best_predecessor);
 	}
 
 	/* OBSERVERS */
