@@ -527,18 +527,15 @@ class map
 			searched_is_strictly_less = compare_func_(key, current->key());
 			searched_is_strictly_greater = compare_func_(current->key(), key);
 			
+			parent = current;
 			if (searched_is_strictly_less) // than current's key
 				current = current->left;
 			else if (searched_is_strictly_greater) // than current's key
-			{
 				current = current->right;
-			}
-			else
-				return iterator(root_, parent);
-			parent = current;
+			else // searched and current kes are equal
+				return iterator(root_, current);
 		}
 		return ++iterator(root_, parent);
-
 	}
 
 	/* Returns lower bound not less than key */
@@ -556,20 +553,19 @@ class map
 		while (current != NIL)
 		{
 			searched_is_strictly_less = compare_func_(key, current->key());
-			searched_is_strictly_greater = compare_func_(current->key, key);
+			searched_is_strictly_greater = compare_func_(current->key(), key);
 			
+			parent = current;
 			if (searched_is_strictly_less) // than current's key
 				current = current->left;
 			else if (searched_is_strictly_greater) // than current's key
-			{
 				current = current->right;
-			}
-			else // searched and node key are equal
-				return const_iterator(root_, parent);
-			parent = current;
+			else // searched and current kes are equal
+				return iterator(root_, current);
 		}
-		return ++const_iterator(root_, parent);
+		return ++iterator(root_, parent);
 	}
+
 
 	/* Returns iterator to the first element greater than key */
 	iterator upper_bound( const Key& key )
@@ -634,7 +630,7 @@ class map
 			else
 				best_predecessor = current;
 		}
-		return ++const_iterator(root_, best_predecessor);
+		return ++iterator(root_, best_predecessor);
 	}
 
 	/* OBSERVERS */
