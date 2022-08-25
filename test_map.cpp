@@ -53,114 +53,136 @@ int	test_map_begin()
 int	test_map_clear()
 {
 
+	return 0;
 }
 
 int	test_map_constructor()
 {
-
+	return 0;
 }
 
 int	test_map_count()
 {
 
+	return 0;
 }
 
 int	test_map_empty()
 {
 
+	return 0;
 }
 
 int	test_map_end()
 {
 
+	return 0;
 }
 
 int	test_map_equal_range()
 {
 
+	return 0;
 }
 
 int	test_map_erase()
 {
 
+	return 0;
 }
 
 int	test_map_find()
 {
 
+	return 0;
 }
 
 int	test_map_get_allocator()
 {
 
+	return 0;
 }
 
 int	test_map_insert()
 {
 
+	return 0;
 }
 
 int	test_map_key_comp()
 {
 
+	return 0;
 }
 
 int	test_map_lower_bound()
 {
 
+	return 0;
 }
 
 int	test_map_operator_bracket()
 {
 
+	return 0;
 }
 
 int	test_map_operator_equal()
 {
 
+	return 0;
 }
 
 int	test_map_rbegin()
 {
 
+	return 0;
 }
 
 int	test_map_relational_operators()
 {
 
+	return 0;
 }
 
 int	test_map_rend()
 {
 
+	return 0;
 }
 
 int	test_map_size()
 {
 
+	return 0;
 }
 
 int	test_map_swap()
 {
 
+	return 0;
 }
 
 int	test_map_swap_overload()
 {
 
+	return 0;
 }
 
 int	test_map_tags()
 {
 
+	return 0;
 }
 
 int	test_map_upper_bound()
 {
 
+	return 0;
 }
 
 int	test_map_value_comp()
 {
 
+	return 0;
 }
